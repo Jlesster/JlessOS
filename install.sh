@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # JlessOS Dotfiles Installer - Simplified
 
-set -e
-
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,7 +10,7 @@ NC='\033[0m'
 
 info() { echo -e "${BLUE}[*]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }
-error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+error() { echo -e "${RED}[✗]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 
 confirm() {
@@ -88,7 +86,7 @@ if $NEEDS_BACKUP && confirm "Backup existing configs?"; then
     for conf in "${CONFIGS[@]}"; do
         if [[ -e "$CONFIG_DIR/$conf" ]]; then
             info "Backing up $conf..."
-            mv "$CONFIG_DIR/$conf" "$BACKUP_DIR/"
+            mv "$CONFIG_DIR/$conf" "$BACKUP_DIR/" 2>/dev/null || warn "Couldn't backup $conf"
         fi
     done
     success "Backed up to $BACKUP_DIR"
@@ -112,15 +110,25 @@ for conf in "${CONFIGS[@]}"; do
     if [[ -d "$SOURCE_DIR/$conf" ]]; then
         info "Installing $conf..."
         mkdir -p "$CONFIG_DIR"
-        cp -rf "$SOURCE_DIR/$conf" "$CONFIG_DIR/"
-        success "$conf installed"
-        ((COPIED++))
+
+        # Remove destination if it exists (prevents cp errors)
+        [[ -e "$CONFIG_DIR/$conf" ]] && rm -rf "$CONFIG_DIR/$conf"
+
+        # Copy with error handling
+        if cp -r "$SOURCE_DIR/$conf" "$CONFIG_DIR/"; then
+            success "$conf installed"
+            ((COPIED++))
+        else
+            warn "Failed to copy $conf"
+        fi
     else
         warn "$conf not found in repo, skipping"
     fi
 done
 
 [[ $COPIED -eq 0 ]] && error "No configs were copied!"
+
+info "Copied $COPIED of ${#CONFIGS[@]} configs"
 
 # === INSTALL FONTS ===
 if [[ -d "$SCRIPT_DIR/Fonts" ]]; then
@@ -169,11 +177,42 @@ if command -v fish &>/dev/null && [[ "$SHELL" != "$(which fish)" ]]; then
     fi
 fi
 
-# === MAKE SCRIPTS EXECUTABLE ===
-if [[ -d "$CONFIG_DIR/scripts" ]]; then
-    info "Making scripts executable..."
-    find "$CONFIG_DIR/scripts" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
-    success "Scripts ready"
+# === SETUP SCRIPTS IN ~/.local/bin ===
+if [[ -d "$SOURCE_DIR/scripts" ]]; then
+    info "Setting up scripts in ~/.local/bin..."
+    BIN_DIR="$HOME/.local/bin"
+    mkdir -p "$BIN_DIR"
+
+    # Make scripts executable first
+    find "$SOURCE_DIR/scripts" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
+
+    # Create symlinks for each script
+    LINKED=0
+    for script in "$SOURCE_DIR/scripts"/*; do
+        if [[ -f "$script" ]]; then
+            SCRIPT_NAME=$(basename "$script")
+            LINK_PATH="$BIN_DIR/$SCRIPT_NAME"
+
+            # Remove existing symlink/file if it exists
+            [[ -e "$LINK_PATH" ]] && rm -f "$LINK_PATH"
+
+            # Create symlink
+            if ln -s "$script" "$LINK_PATH"; then
+                ((LINKED++))
+            else
+                warn "Failed to link $SCRIPT_NAME"
+            fi
+        fi
+    done
+
+    success "Linked $LINKED scripts to ~/.local/bin"
+
+    # Check if ~/.local/bin is in PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        warn "~/.local/bin is not in your PATH"
+        info "Add this to your shell config:"
+        echo '  export PATH="$HOME/.local/bin:$PATH"'
+    fi
 fi
 
 echo ""
