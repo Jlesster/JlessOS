@@ -1,766 +1,186 @@
 #!/usr/bin/env bash
+# JlessOS Dotfiles Installer - Simplified
 
-# JlessOS Dotfiles Installer
-# Complete installation script for Arch + Hyprland setup
+set -e
 
-set -euo pipefail
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly MAGENTA='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly BOLD='\033[1m'
-readonly NC='\033[0m' # No Color
+info() { echo -e "${BLUE}[*]${NC} $1"; }
+success() { echo -e "${GREEN}[✓]${NC} $1"; }
+error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 
-# Script configuration
+confirm() {
+    read -p "$(echo -e ${YELLOW}$1 [y/N]:${NC} )" -n 1 -r
+    echo
+    [[ $REPLY =~ ^[Yy]$ ]]
+}
+
+# Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d_%H%M%S)"
-
-# Repositories
-JLESSOS_REPO="https://github.com/Jlesster/JlessOS.git"
 NVIM_REPO="https://github.com/Jlesster/nvimConf.git"
 
-# Print functions
-print_header() {
-    echo -e "${MAGENTA}"
-    echo "================================"
-    echo "  JlessOS Dotfiles Installer"
-    echo "================================"
-    echo -e "${NC}"
-}
+echo -e "${BLUE}"
+cat << 'EOF'
+   ╦╦  ╔═╗╔═╗╔═╗╔═╗╔═╗
+   ║║  ║╣ ╚═╗╚═╗║ ║╚═╗
+  ╚╝╚═╝╚═╝╚═╝╚═╝╚═╝╚═╝
+   Dotfiles Installer
+EOF
+echo -e "${NC}"
 
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+# Check if running on Arch
+if ! grep -qi arch /etc/os-release 2>/dev/null; then
+    warn "Not detected as Arch-based system"
+    confirm "Continue anyway?" || exit 0
+fi
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+# === INSTALL DEPENDENCIES ===
+if confirm "Install dependencies?"; then
+    info "Installing packages..."
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+    # Core packages
+    sudo pacman -S --needed \
+        base-devel git wget curl \
+        hyprland waybar wofi dunst grim slurp wl-clipboard \
+        kitty fish \
+        neovim lazygit \
+        yazi fastfetch ripgrep fd fzf bat eza \
+        pipewire wireplumber \
+        brightnessctl playerctl pamixer \
+        noto-fonts-emoji ttf-jetbrains-mono-nerd \
+        python-pillow python-opencv || warn "Some packages failed"
 
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-print_step() {
-    echo -e "\n${CYAN}▶${NC} ${BOLD}$1${NC}"
-}
-
-# Confirm action with user
-confirm() {
-    local prompt="$1"
-    local default="${2:-n}"
-
-    if [[ "$default" == "y" ]]; then
-        prompt="$prompt [Y/n]: "
-    else
-        prompt="$prompt [y/N]: "
-    fi
-
-    read -p "$prompt" -n 1 -r
-    echo
-
-    if [[ "$default" == "y" ]]; then
-        [[ $REPLY =~ ^[Nn]$ ]] && return 1 || return 0
-    else
-        [[ $REPLY =~ ^[Yy]$ ]] && return 0 || return 1
-    fi
-}
-
-# Execute command with error handling
-execute() {
-    local cmd="$1"
-    local desc="${2:-Executing command}"
-
-    print_info "$desc"
-    echo -e "${YELLOW}  → ${cmd}${NC}"
-
-    if eval "$cmd"; then
-        print_success "Done"
-        return 0
-    else
-        print_error "Failed: $desc"
-        return 1
-    fi
-}
-
-# Detect Linux distribution
-detect_distro() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        echo "$ID"
-    elif [ -f /etc/arch-release ]; then
-        echo "arch"
-    else
-        echo "unknown"
-    fi
-}
-
-# Helper function to parse packages from dependency file
-parse_packages() {
-    local file="$1"
-
-    # Extract packages (ignore comments and empty lines)
-    grep -v '^#' "$file" | \
-    grep -v '^$' | \
-    tr '\n' ' '
-}
-
-# Install dependencies based on distro
-install_dependencies() {
-    print_step "Installing dependencies"
-
-    local distro=$(detect_distro)
-
-    case "$distro" in
-        arch|endeavouros|cachyos|manjaro)
-            install_arch_deps
-            ;;
-        *)
-            print_warning "Unsupported distribution: $distro"
-            print_info "This installer is designed for Arch-based systems"
-            if confirm "Continue anyway?"; then
-                return 0
-            else
-                exit 1
-            fi
-            ;;
-    esac
-}
-
-install_arch_deps() {
-    print_info "Detected Arch-based system"
-
-    local deps_file="$SCRIPT_DIR/deps.txt"
-
-    # Check if deps.txt exists
-    if [ ! -f "$deps_file" ]; then
-        print_error "deps.txt not found at $deps_file"
-        print_info "Falling back to manual package list..."
-
-        # Fallback to minimal core packages
-        local core_packages=(
-            base base-devel linux linux-firmware linux-headers amd-ucode
-            sudo efibootmgr dkms ly zram-generator btrfs-progs fuse2 smartmontools
-            networkmanager iwd wpa_supplicant wireless_tools
-            bluez bluez-utils pipewire pipewire-alsa pipewire-jack pipewire-pulse
-            hyprland hyprpaper waybar wofi dunst grim slurp wl-clipboard
-            kitty fish git wget curl unzip zip ripgrep fd fzf bat eza
-            neovim lazygit github-cli firefox chromium
-            noto-fonts-emoji ttf-jetbrains-mono-nerd
-        )
-    else
-        # Parse packages from deps.txt
-        print_info "Loading packages from deps.txt..."
-        local core_packages=$(parse_packages "$deps_file")
-
-        # Remove packages that need special handling
-        core_packages=$(echo "$core_packages" | sed 's/yay//g' | sed 's/tree-sitter-cli//g')
-    fi
-
-    # Show what will be installed
-    local pkg_count=$(echo "$core_packages" | wc -w)
-    print_info "Found $pkg_count packages to install"
-
-    if confirm "Install $pkg_count packages with pacman?" "y"; then
-        execute "sudo pacman -S --needed $core_packages" "Installing packages"
-    fi
-
-    # Install yay if not present
-    if ! command -v yay &> /dev/null; then
-        print_warning "yay not found. Installing yay AUR helper..."
-        if confirm "Install yay?"; then
-            execute "git clone https://aur.archlinux.org/yay.git /tmp/yay && cd /tmp/yay && makepkg -si --noconfirm" "Installing yay"
-        fi
+    # Install yay
+    if ! command -v yay &>/dev/null; then
+        info "Installing yay..."
+        git clone https://aur.archlinux.org/yay.git /tmp/yay
+        (cd /tmp/yay && makepkg -si --noconfirm)
+        rm -rf /tmp/yay
+        success "yay installed"
     fi
 
     # AUR packages
-    if command -v yay &> /dev/null; then
-        local aur_packages=(
-            grimblast-git
-            hyprpicker
-            opencode
-        )
-
-        if confirm "Install AUR packages with yay?"; then
-            execute "yay -S --needed ${aur_packages[*]}" "Installing AUR packages"
-        fi
+    if command -v yay &>/dev/null && confirm "Install AUR packages?"; then
+        yay -S --needed grimblast-git hyprpicker || warn "Some AUR packages failed"
     fi
 
-    # Python packages for Material You theming
-    print_info "Installing Python packages for theming system"
-    local python_packages=(
-        python-pillow
-        python-opencv
-    )
+    success "Dependencies installed"
+fi
 
-    if confirm "Install Python theming dependencies?"; then
-        for pkg in "${python_packages[@]}"; do
-            execute "sudo pacman -S $pkg" "Installing $pkg"
-        done
-        execute "yay -S kde-material-you-color" "Installing Material You"
-    fi
+# === BACKUP EXISTING CONFIGS ===
+CONFIGS=(hypr waybar wofi kitty fish yazi fastfetch lazygit Kvantum scripts)
+NEEDS_BACKUP=false
 
-    # Install tree-sitter-cli (critical for nvim)
-    if ! command -v tree-sitter &> /dev/null; then
-        print_info "Installing tree-sitter-cli for Neovim"
-        if command -v cargo &> /dev/null; then
-            execute "cargo install tree-sitter-cli" "Installing via cargo"
-        else
-            print_warning "Rustup not initialized. Run 'rustup default stable' first"
-            if confirm "Initialize rustup now?"; then
-                execute "rustup default stable" "Initializing Rust toolchain"
-                execute "cargo install tree-sitter-cli" "Installing via cargo"
-            fi
-        fi
-    else
-        print_success "tree-sitter-cli already installed"
-    fi
-}
+for conf in "${CONFIGS[@]}"; do
+    [[ -e "$CONFIG_DIR/$conf" ]] && NEEDS_BACKUP=true && break
+done
 
-# Backup existing configs
-backup_configs() {
-    print_step "Backing up existing configurations"
-
-    local configs=(
-        "hypr"
-        "waybar"
-        "wofi"
-        "kitty"
-        "fish"
-        "yazi"
-        "fastfetch"
-        "lazygit"
-        "nvim"
-        "Kvantum"
-        "scripts"
-    )
-
-    local backed_up=0
-    local skipped=0
-
-    # Create backup directory only if needed
-    local backup_needed=false
-    for config in "${configs[@]}"; do
-        if [ -e "$CONFIG_DIR/$config" ]; then
-            backup_needed=true
-            break
+if $NEEDS_BACKUP && confirm "Backup existing configs?"; then
+    mkdir -p "$BACKUP_DIR"
+    for conf in "${CONFIGS[@]}"; do
+        if [[ -e "$CONFIG_DIR/$conf" ]]; then
+            info "Backing up $conf..."
+            mv "$CONFIG_DIR/$conf" "$BACKUP_DIR/"
         fi
     done
+    success "Backed up to $BACKUP_DIR"
+fi
 
-    if [ "$backup_needed" = false ]; then
-        print_info "No existing configs found to backup"
-        return 0
-    fi
+# === COPY CONFIGS ===
+info "Copying configurations..."
 
-    # Create backup directory
-    if ! mkdir -p "$BACKUP_DIR"; then
-        print_error "Failed to create backup directory: $BACKUP_DIR"
-        return 1
-    fi
+# Determine source directory
+if [[ -d "$SCRIPT_DIR/.config" ]]; then
+    SOURCE_DIR="$SCRIPT_DIR/.config"
+else
+    SOURCE_DIR="$SCRIPT_DIR"
+fi
 
-    print_info "Backup directory: $BACKUP_DIR"
-    echo ""
+info "Using source: $SOURCE_DIR"
 
-    # Backup each config
-    for config in "${configs[@]}"; do
-        local config_path="$CONFIG_DIR/$config"
-
-        if [ ! -e "$config_path" ]; then
-            continue
-        fi
-
-        # Check if it's a symlink
-        if [ -L "$config_path" ]; then
-            print_warning "$config is a symlink, removing instead of backing up"
-            if rm "$config_path"; then
-                ((skipped++))
-            else
-                print_error "Failed to remove symlink: $config_path"
-            fi
-            continue
-        fi
-
-        # Backup regular files/directories
-        print_info "Backing up $config"
-        if mv "$config_path" "$BACKUP_DIR/"; then
-            ((backed_up++))
-            print_success "$config backed up"
-        else
-            print_error "Failed to backup $config"
-        fi
-    done
-
-    echo ""
-    if [ $backed_up -gt 0 ]; then
-        print_success "Backed up $backed_up configs to $BACKUP_DIR"
-    fi
-
-    if [ $skipped -gt 0 ]; then
-        print_info "Removed $skipped symlinks"
-    fi
-
-    return 0
-}
-
-# Clone or update dotfiles
-clone_dotfiles() {
-    print_step "Setting up dotfiles"
-
-    local dotfiles_dir="${1:-$HOME/.dotfiles}"
-
-    # Clone JlessOS
-    if [ -d "$dotfiles_dir/JlessOS" ]; then
-        print_info "JlessOS directory already exists"
-        if confirm "Pull latest changes?"; then
-            cd "$dotfiles_dir/JlessOS"
-            execute "git pull" "Updating JlessOS dotfiles"
-        fi
+# Copy each config
+COPIED=0
+for conf in "${CONFIGS[@]}"; do
+    if [[ -d "$SOURCE_DIR/$conf" ]]; then
+        info "Installing $conf..."
+        mkdir -p "$CONFIG_DIR"
+        cp -rf "$SOURCE_DIR/$conf" "$CONFIG_DIR/"
+        success "$conf installed"
+        ((COPIED++))
     else
-        mkdir -p "$dotfiles_dir"
-        execute "git clone $JLESSOS_REPO $dotfiles_dir/JlessOS" "Cloning JlessOS dotfiles"
+        warn "$conf not found in repo, skipping"
     fi
+done
 
-    # Clone nvimConf
-    if [ -d "$dotfiles_dir/nvimConf" ]; then
-        print_info "nvimConf directory already exists"
-        if confirm "Pull latest changes?"; then
-            cd "$dotfiles_dir/nvimConf"
-            execute "git pull" "Updating nvimConf"
-        fi
+[[ $COPIED -eq 0 ]] && error "No configs were copied!"
+
+# === INSTALL FONTS ===
+if [[ -d "$SCRIPT_DIR/Fonts" ]]; then
+    info "Installing custom fonts..."
+    FONT_DIR="$HOME/.local/share/fonts"
+    mkdir -p "$FONT_DIR"
+    cp -r "$SCRIPT_DIR/Fonts"/* "$FONT_DIR/" 2>/dev/null || true
+    fc-cache -fv >/dev/null 2>&1
+    success "Fonts installed"
+fi
+
+# === SETUP MATERIAL THEME ===
+if [[ -d "$SCRIPT_DIR/colorscheming" ]]; then
+    info "Setting up Material You theme..."
+    THEME_DIR="$CONFIG_DIR/material-theme"
+    mkdir -p "$THEME_DIR"
+    cp -r "$SCRIPT_DIR/colorscheming"/* "$THEME_DIR/"
+    find "$THEME_DIR" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
+    success "Theme system installed"
+fi
+
+# === CLONE NEOVIM CONFIG ===
+if confirm "Install nvim config from separate repo?"; then
+    if [[ -d "$HOME/.dotfiles/nvimConf" ]]; then
+        info "Updating nvimConf..."
+        (cd "$HOME/.dotfiles/nvimConf" && git pull)
     else
-        mkdir -p "$dotfiles_dir"
-        execute "git clone $NVIM_REPO $dotfiles_dir/nvimConf" "Cloning nvimConf"
-    fi
-}
-
-# Install custom fonts
-install_fonts() {
-    print_step "Installing custom fonts"
-
-    local font_dir="$HOME/.local/share/fonts"
-    mkdir -p "$font_dir"
-
-    # Check for custom fonts in repo
-    if [ -d "$HOME/.dotfiles/JlessOS/Fonts" ]; then
-        print_info "Found custom fonts in repository"
-
-        # Install IPatched fonts if they exist
-        if [ -d "$HOME/.dotfiles/JlessOS/Fonts/IPatched" ]; then
-            print_info "Installing IPatched fonts..."
-            cp -r "$HOME/.dotfiles/JlessOS/Fonts/IPatched"/* "$font_dir/"
-            print_success "Custom fonts copied to $font_dir"
-        fi
-
-        # Install any other font directories
-        for font_subdir in "$HOME/.dotfiles/JlessOS/Fonts"/*; do
-            if [ -d "$font_subdir" ] && [ "$(basename "$font_subdir")" != "IPatched" ]; then
-                print_info "Installing fonts from $(basename "$font_subdir")..."
-                cp -r "$font_subdir"/* "$font_dir/"
-            fi
-        done
-
-        # Rebuild font cache
-        execute "fc-cache -fv" "Rebuilding font cache"
-        print_success "Custom fonts installed"
-    else
-        print_warning "Custom fonts directory not found in JlessOS repo"
-        print_info "System fonts from deps.txt will be used"
-    fi
-}
-
-# Setup Material You theming system
-setup_material_theme() {
-    print_step "Setting up Material You theming system"
-
-    local dotfiles_dir="${1:-$HOME/.dotfiles}"
-    local theme_dir="$CONFIG_DIR/material-theme"
-
-    # Create theme directories
-    mkdir -p "$theme_dir"
-    mkdir -p "$HOME/.local/state/material-theme"
-    mkdir -p "$HOME/.cache/material-theme"
-
-    # Copy theme generation scripts
-    if [ -d "$dotfiles_dir/JlessOS/colorscheming" ]; then
-        print_info "Copying Material You theme generators"
-        cp -r "$dotfiles_dir/JlessOS/colorscheming"/* "$theme_dir/"
-
-        # Make scripts executable
-        find "$theme_dir" -type f -name "*.sh" -exec chmod +x {} \;
-        find "$theme_dir" -type f -name "*.py" -exec chmod +x {} \;
-
-        print_success "Material You theme system installed"
-
-        print_info "Theme usage:"
-        echo "  Generate from wallpaper:"
-        echo "    $theme_dir/switchwall.sh --image ~/path/to/wallpaper.jpg"
-        echo ""
-        echo "  Generate from color:"
-        echo "    $theme_dir/switchwall.sh --color '#89b4fa'"
-    else
-        print_warning "Material theme directory not found in repo"
-    fi
-}
-
-# Copy a single config directory
-copy_single_config() {
-    local source="$1"
-    local target="$2"
-    local name="$3"
-
-    # DEBUG: Show what we're trying to copy
-    print_info "[DEBUG] Attempting to copy $name"
-    print_info "[DEBUG]   Source: $source"
-    print_info "[DEBUG]   Target: $target"
-    print_info "[DEBUG]   Source exists: $([ -e "$source" ] && echo "YES" || echo "NO")"
-    if [ -d "$source" ]; then
-        print_info "[DEBUG]   Source is directory with $(ls -A "$source" | wc -l) items"
+        info "Cloning nvimConf..."
+        mkdir -p "$HOME/.dotfiles"
+        git clone "$NVIM_REPO" "$HOME/.dotfiles/nvimConf"
     fi
 
-    # Check if source exists
-    if [ ! -e "$source" ]; then
-        print_error "Source not found: $source"
-        return 1
+    info "Installing nvim config..."
+    mkdir -p "$CONFIG_DIR"
+    cp -rf "$HOME/.dotfiles/nvimConf" "$CONFIG_DIR/nvim"
+    success "nvim config installed"
+fi
+
+# === SETUP FISH SHELL ===
+if command -v fish &>/dev/null && [[ "$SHELL" != "$(which fish)" ]]; then
+    if confirm "Set Fish as default shell?"; then
+        FISH_PATH=$(which fish)
+        grep -q "$FISH_PATH" /etc/shells || echo "$FISH_PATH" | sudo tee -a /etc/shells
+        chsh -s "$FISH_PATH"
+        success "Fish set as default shell (restart to apply)"
     fi
+fi
 
-    # Check if source is empty
-    if [ -d "$source" ] && [ -z "$(ls -A "$source")" ]; then
-        print_warning "$name source directory is empty"
-        return 1
-    fi
+# === MAKE SCRIPTS EXECUTABLE ===
+if [[ -d "$CONFIG_DIR/scripts" ]]; then
+    info "Making scripts executable..."
+    find "$CONFIG_DIR/scripts" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
+    success "Scripts ready"
+fi
 
-    # Handle existing target
-    if [ -e "$target" ]; then
-        print_warning "$name already exists at $target"
-        if ! confirm "Overwrite $name?" "n"; then
-            print_info "Skipping $name"
-            return 0
-        fi
-        print_info "Removing old $name"
-        rm -rf "$target"
-    fi
-
-    # Perform the copy
-    print_info "Copying $name..."
-
-    # Create target directory
-    mkdir -p "$target"
-
-    # Copy contents (note the trailing /. to copy contents, not the directory itself)
-    if cp -r "$source"/. "$target"/; then
-        print_success "$name copied successfully"
-        print_info "[DEBUG] Copied $(find "$target" -type f 2>/dev/null | wc -l) files"
-        return 0
-    else
-        print_error "Failed to copy $name"
-        return 1
-    fi
-}
-
-# Copy configurations
-copy_configs() {
-    print_step "Copying configuration files"
-
-    local dotfiles_dir="${1:-$HOME/.dotfiles}"
-
-    # First, let's check what structure we have
-    print_info "[DEBUG] Checking repository structure..."
-    if [ -d "$dotfiles_dir/JlessOS/.config" ]; then
-        print_info "[DEBUG] Found JlessOS/.config directory"
-        local jlessos_dir="$dotfiles_dir/JlessOS/.config"
-    elif [ -d "$dotfiles_dir/JlessOS" ]; then
-        print_info "[DEBUG] JlessOS exists but no .config subdirectory"
-        print_info "[DEBUG] Contents of JlessOS:"
-        ls -la "$dotfiles_dir/JlessOS/" | head -20
-        local jlessos_dir="$dotfiles_dir/JlessOS"
-    else
-        print_error "JlessOS directory not found at $dotfiles_dir/JlessOS"
-        return 1
-    fi
-
-    print_info "Source directory: $jlessos_dir"
-    print_info "Target directory: $CONFIG_DIR"
-    echo ""
-
-    # Configuration entries - now just simple names since we'll construct paths
-    local configs=(
-        "hypr"
-        "waybar"
-        "wofi"
-        "kitty"
-        "fish"
-        "yazi"
-        "fastfetch"
-        "lazygit"
-        "Kvantum"
-        "scripts"
-    )
-
-    # Ask once if user wants to overwrite all existing configs
-    local overwrite_all=false
-    local has_existing=false
-
-    for config_name in "${configs[@]}"; do
-        if [ -e "$CONFIG_DIR/$config_name" ]; then
-            has_existing=true
-            break
-        fi
-    done
-
-    if [ "$has_existing" = true ]; then
-        if confirm "Some configs already exist. Overwrite ALL existing configs?" "y"; then
-            overwrite_all=true
-        fi
-    fi
-
-    local copied=0
-    local failed=0
-    local skipped=0
-
-    # Copy JlessOS configs
-    for config_name in "${configs[@]}"; do
-        echo ""  # Add spacing between configs
-        local source="$jlessos_dir/$config_name"
-        local target="$CONFIG_DIR/$config_name"
-
-        print_info "Processing $config_name..."
-        print_info "  Source: $source"
-        print_info "  Target: $target"
-
-        # Check if source exists
-        if [ ! -e "$source" ]; then
-            print_warning "$config_name not found in source repository (path doesn't exist)"
-            ((failed++))
-            continue
-        fi
-
-        # Check if source is empty directory
-        if [ -d "$source" ] && [ -z "$(ls -A "$source" 2>/dev/null)" ]; then
-            print_warning "$config_name source directory is empty"
-            ((failed++))
-            continue
-        fi
-
-        # Handle existing target
-        if [ -e "$target" ] && [ "$overwrite_all" = false ]; then
-            print_warning "$config_name already exists at $target"
-            if ! confirm "Overwrite $config_name?" "n"; then
-                print_info "Skipping $config_name"
-                ((skipped++))
-                continue
-            fi
-        fi
-
-        # Remove existing if present
-        if [ -e "$target" ]; then
-            print_info "Removing old $config_name"
-            rm -rf "$target" || {
-                print_error "Failed to remove old $config_name"
-                ((failed++))
-                continue
-            }
-        fi
-
-        # Copy the config
-        print_info "Copying $config_name..."
-        mkdir -p "$target" || {
-            print_error "Failed to create target directory for $config_name"
-            ((failed++))
-            continue
-        }
-
-        # Explicitly handle cp errors without exiting
-        set +e
-        cp -r "$source"/. "$target"/ 2>&1
-        local cp_exit_code=$?
-        set -e
-
-        if [ $cp_exit_code -ne 0 ]; then
-            print_error "Failed to copy $config_name (cp returned exit code $cp_exit_code)"
-            ((failed++))
-        else
-            local file_count=$(find "$target" -type f 2>/dev/null | wc -l)
-            print_success "$config_name copied successfully ($file_count files)"
-            ((copied++))
-        fi
-
-        print_info "Loop iteration complete for $config_name, continuing to next..."
-    done
-
-    print_info "Finished processing all JlessOS configs"
-
-    echo ""
-
-    # Copy Neovim config separately (different source repo)
-    local nvim_source="$dotfiles_dir/nvimConf"
-    local nvim_target="$CONFIG_DIR/nvim"
-
-    if [ -e "$nvim_source" ]; then
-        if [ -e "$nvim_target" ] && [ "$overwrite_all" = false ]; then
-            if confirm "Overwrite nvim config?" "n"; then
-                rm -rf "$nvim_target"
-            else
-                ((skipped++))
-                nvim_source=""  # Skip nvim
-            fi
-        elif [ -e "$nvim_target" ]; then
-            rm -rf "$nvim_target"
-        fi
-
-        if [ -n "$nvim_source" ]; then
-            print_info "Copying nvim..."
-            mkdir -p "$nvim_target"
-
-            if cp -r "$nvim_source"/. "$nvim_target"/; then
-                print_success "nvim copied successfully ($(find "$nvim_target" -type f 2>/dev/null | wc -l) files)"
-                ((copied++))
-            else
-                print_error "Failed to copy nvim"
-                ((failed++))
-            fi
-        fi
-    else
-        print_warning "nvimConf not found at $nvim_source"
-        ((failed++))
-    fi
-
-    echo ""
-    print_info "Summary: $copied copied, $skipped skipped, $failed failed"
-
-    if [ $copied -gt 0 ]; then
-        print_success "Configuration files copied"
-        return 0
-    else
-        print_warning "No configurations were copied"
-        return 1
-    fi
-}
-
-# Set fish as default shell
-setup_fish() {
-    print_step "Setting up Fish shell"
-
-    if ! command -v fish &> /dev/null; then
-        print_warning "Fish shell not found, skipping"
-        return
-    fi
-
-    local fish_path=$(which fish)
-
-    if [ "$SHELL" != "$fish_path" ]; then
-        if confirm "Set Fish as default shell?"; then
-            if ! grep -q "$fish_path" /etc/shells; then
-                print_info "Adding Fish to /etc/shells"
-                echo "$fish_path" | sudo tee -a /etc/shells
-            fi
-            execute "chsh -s $fish_path" "Changing default shell to Fish"
-            print_success "Fish set as default shell (re-login to apply)"
-        fi
-    else
-        print_info "Fish is already your default shell"
-    fi
-}
-
-# Setup Neovim
-setup_neovim() {
-    print_step "Setting up Neovim"
-
-    if ! command -v nvim &> /dev/null; then
-        print_warning "Neovim not found, skipping setup"
-        return
-    fi
-
-    print_info "Installing lazy.nvim package manager"
-    local lazy_path="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy/lazy.nvim"
-
-    if [ ! -d "$lazy_path" ]; then
-        execute "git clone --filter=blob:none https://github.com/folke/lazy.nvim.git --branch=stable $lazy_path" \
-            "Cloning lazy.nvim"
-    fi
-
-    print_info "Neovim will install plugins on first launch"
-    print_info "Run :Lazy sync inside Neovim to install/update plugins"
-}
-
-# Make scripts executable
-setup_scripts() {
-    print_step "Setting up scripts"
-
-    local scripts_dir="$CONFIG_DIR/scripts"
-
-    if [ -d "$scripts_dir" ]; then
-        print_info "Making scripts executable"
-        find "$scripts_dir" -type f -name "*.sh" -exec chmod +x {} \;
-        find "$scripts_dir" -type f -name "*.py" -exec chmod +x {} \;
-        print_success "Scripts are now executable"
-    else
-        print_warning "Scripts directory not found"
-    fi
-}
-
-# Post-installation steps
-post_install() {
-    print_step "Post-installation"
-
-    print_info "To complete setup:"
-    echo "  1. Log out and select Hyprland session"
-    echo "  2. Open Neovim and run :Lazy sync"
-    echo "  3. Generate theme: ~/.config/material-theme/switchwall.sh --image <wallpaper>"
-    echo "  4. Review configuration files in $CONFIG_DIR"
-
-    if [ -d "$BACKUP_DIR" ]; then
-        echo "  5. Old configs backed up to: $BACKUP_DIR"
-    fi
-
-    echo ""
-    print_info "Important Hyprland keybinds:"
-    echo "  Super + Enter         - Terminal"
-    echo "  Super + D             - App launcher"
-    echo "  Super + Q             - Close window"
-    echo "  Super + E             - File manager"
-    echo "  Super + V             - Toggle floating"
-}
-
-# Main installation flow
-main() {
-    print_header
-
-    print_info "This script will install JlessOS dotfiles and dependencies"
-    echo ""
-
-    if ! confirm "Continue with installation?" "n"; then
-        print_info "Installation cancelled"
-        exit 0
-    fi
-
-    # Installation steps
-    install_dependencies || print_warning "Dependency installation had issues"
-    # backup_configs
-    clone_dotfiles "$HOME/.dotfiles"
-    install_fonts
-    setup_material_theme "$HOME/.dotfiles"
-    copy_configs "$HOME/.dotfiles"
-    setup_fish
-    setup_neovim
-    setup_scripts
-
-    echo ""
-    print_success "Installation complete! 🎉"
-    echo ""
-
-    post_install
-
-    echo ""
-    print_info "For issues or questions: https://github.com/Jlesster/JlessOS"
-}
-
-# Run main function
-main "$@"
+echo ""
+success "Installation complete! 🎉"
+echo ""
+info "Next steps:"
+echo "  1. Log out and select Hyprland session"
+echo "  2. Open terminal (Super+Enter)"
+echo "  3. Run: ~/.config/material-theme/switchwall.sh --image ~/path/to/wallpaper.jpg"
+[[ -d "$BACKUP_DIR" ]] && echo "  4. Old configs: $BACKUP_DIR"

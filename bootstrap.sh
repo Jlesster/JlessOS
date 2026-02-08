@@ -1,24 +1,21 @@
 #!/usr/bin/env bash
-# JlessOS One-Line Installer Bootstrap
+# JlessOS Bootstrap - One-liner installer
 # Usage: bash <(curl -fsSL https://raw.githubusercontent.com/Jlesster/JlessOS/master/bootstrap.sh)
 
-set -euo pipefail
+set -e
 
 # Colors
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly MAGENTA='\033[0;35m'
-readonly NC='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Configuration
 REPO_URL="https://github.com/Jlesster/JlessOS.git"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.dotfiles/JlessOS}"
-TEMP_DIR="/tmp/jlessos-install-$$"
+INSTALL_DIR="$HOME/.dotfiles/JlessOS"
 
 # Banner
-cat << "EOF"
+cat << 'EOF'
 
      ██╗██╗     ███████╗███████╗███████╗ ██████╗ ███████╗
      ██║██║     ██╔════╝██╔════╝██╔════╝██╔═══██╗██╔════╝
@@ -35,76 +32,58 @@ echo -e "${BLUE}Repository:${NC} $REPO_URL"
 echo -e "${BLUE}Install to:${NC} $INSTALL_DIR"
 echo ""
 
-# Check for required tools
+# Check prerequisites
 echo -e "${YELLOW}Checking prerequisites...${NC}"
-
-MISSING_DEPS=()
-
+MISSING=()
 for cmd in git curl; do
-    if ! command -v "$cmd" &> /dev/null; then
-        MISSING_DEPS+=("$cmd")
-    fi
+    command -v "$cmd" &>/dev/null || MISSING+=("$cmd")
 done
 
-if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
-    echo -e "${RED}Error: Missing required tools: ${MISSING_DEPS[*]}${NC}"
-    echo ""
-    echo "Install them with:"
-    echo "  sudo pacman -S ${MISSING_DEPS[*]}"
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+    echo -e "${RED}Error: Missing required tools: ${MISSING[*]}${NC}"
+    echo "Install with: sudo pacman -S ${MISSING[*]}"
     exit 1
 fi
 
 echo -e "${GREEN}✓${NC} Prerequisites met"
 echo ""
 
-# Confirm installation
+# Confirm
 read -p "$(echo -e ${YELLOW}Continue with installation? [y/N]:${NC} )" -n 1 -r
 echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${BLUE}Installation cancelled.${NC}"
-    exit 0
-fi
+[[ ! $REPLY =~ ^[Yy]$ ]] && echo -e "${BLUE}Cancelled.${NC}" && exit 0
 
-# Create temp directory
-mkdir -p "$INSTALL_DIR"
-
+# Clone repo
 echo ""
-echo -e "${BLUE}Downloading installer...${NC}"
+echo -e "${BLUE}Cloning repository...${NC}"
 
-# Clone repository
-if git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
-    echo -e "${GREEN}✓${NC} Repository cloned"
+if [[ -d "$INSTALL_DIR" ]]; then
+    echo -e "${YELLOW}Directory exists, pulling latest...${NC}"
+    (cd "$INSTALL_DIR" && git pull)
 else
-    echo -e "${RED}✗${NC} Failed to clone repository"
-    exit 1
+    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
 fi
 
-cd "$INSTALL_DIR"
+echo -e "${GREEN}✓${NC} Repository ready"
 
-# Make install script executable
+# Run installer
+cd "$INSTALL_DIR"
 chmod +x install.sh
 
 echo ""
 echo -e "${GREEN}Starting installation...${NC}"
 echo ""
 
-# Run the actual installer
 ./install.sh
 
-# Cleanup
-cd /
-rm -rf "$TEMP_DIR"
-
 echo ""
-echo -e "${GREEN}═══════════════════════════════════════${NC}"
+echo -e "${GREEN}════════════════════════════════════${NC}"
 echo -e "${GREEN}Installation complete! 🎉${NC}"
-echo -e "${GREEN}═══════════════════════════════════════${NC}"
+echo -e "${GREEN}════════════════════════════════════${NC}"
 echo ""
-echo -e "${BLUE}Next steps:${NC}"
-echo "  1. Log out and select Hyprland session"
-echo "  2. Press Super + Enter to open terminal"
-echo "  3. Configure your theme:"
-echo "     ~/.config/material-theme/switchwall.sh --image ~/path/to/wallpaper.jpg"
+echo -e "${BLUE}Quick start:${NC}"
+echo "  1. Log out → Select Hyprland"
+echo "  2. Super+Enter → Terminal"
+echo "  3. Super+D → App launcher"
 echo ""
-echo -e "${YELLOW}Note:${NC} Your dotfiles are in $INSTALL_DIR"
-echo ""
+echo -e "${YELLOW}Dotfiles location:${NC} $INSTALL_DIR"
