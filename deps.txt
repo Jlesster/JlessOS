@@ -1,6 +1,6 @@
-#!/bin/bash
-# JlessOS Essential Packages
-# Minimal system setup for Arch + Hyprland
+# JlessOS Essential Packages List
+# Use with: pacman -S --needed - < packages.txt
+# Or source in install script
 
 # === SYSTEM CORE ===
 base
@@ -14,8 +14,8 @@ efibootmgr
 dkms
 
 # === BOOTLOADER & INIT ===
-ly                      # Display manager
-zram-generator         # RAM compression
+ly
+zram-generator
 
 # === FILESYSTEM ===
 btrfs-progs
@@ -111,6 +111,8 @@ btop
 bat
 eza
 fzf
+ripgrep
+fd
 jq
 tldr
 fastfetch
@@ -118,9 +120,11 @@ fastfetch
 # === PROGRAMMING ===
 rustup
 npm
+python
 python-pip
 maven
 cmake
+gcc
 
 # === NVIDIA ===
 nvidia-open-dkms
@@ -155,12 +159,12 @@ github-cli
 lazygit
 glow
 neovim
+tree-sitter-cli
 
 # === UTILITIES ===
 scrot
 keyd
 uwsm
-grimblast-git          # AUR
 
 # === DOCUMENTATION ===
 python-docs
@@ -170,7 +174,6 @@ zeal
 yay
 
 # === FONTS (MINIMAL) ===
-# Keep only essential fonts - see fonts-minimal.txt
 noto-fonts-emoji
 noto-fonts-extra
 noto-fonts-cjk
@@ -181,3 +184,4 @@ ttf-fira-code
 ttf-nerd-fonts-symbols-mono
 inter-font
 cantarell-fonts
+ttf-font-awesome
