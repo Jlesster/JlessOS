@@ -450,9 +450,14 @@ copy_single_config() {
 
     # Perform the copy
     print_info "Copying $name..."
-    if cp -r "$source" "$target"; then
+
+    # Create target directory
+    mkdir -p "$target"
+
+    # Copy contents (note the trailing /. to copy contents, not the directory itself)
+    if cp -r "$source"/. "$target"/; then
         print_success "$name copied successfully"
-        print_info "[DEBUG] Copied $(find "$target" -type f | wc -l) files"
+        print_info "[DEBUG] Copied $(find "$target" -type f 2>/dev/null | wc -l) files"
         return 0
     else
         print_error "Failed to copy $name"
