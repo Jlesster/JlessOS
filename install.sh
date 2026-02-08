@@ -504,25 +504,98 @@ copy_configs() {
         "scripts"
     )
 
+    # Ask once if user wants to overwrite all existing configs
+    local overwrite_all=false
+    local has_existing=false
+
+    for config_name in "${configs[@]}"; do
+        if [ -e "$CONFIG_DIR/$config_name" ]; then
+            has_existing=true
+            break
+        fi
+    done
+
+    if [ "$has_existing" = true ]; then
+        if confirm "Some configs already exist. Overwrite ALL existing configs?" "y"; then
+            overwrite_all=true
+        fi
+    fi
+
     local copied=0
     local failed=0
     local skipped=0
 
     # Copy JlessOS configs
     for config_name in "${configs[@]}"; do
-        local source="$jlessos_dir/$config_name/./."
+        echo ""  # Add spacing between configs
+        local source="$jlessos_dir/$config_name"
         local target="$CONFIG_DIR/$config_name"
 
-        if copy_single_config "$source" "$target" "$config_name"; then
-            ((copied++))
-        else
-            if [ -e "$target" ]; then
+        print_info "Processing $config_name..."
+        print_info "  Source: $source"
+        print_info "  Target: $target"
+
+        # Check if source exists
+        if [ ! -e "$source" ]; then
+            print_warning "$config_name not found in source repository (path doesn't exist)"
+            ((failed++))
+            continue
+        fi
+
+        # Check if source is empty directory
+        if [ -d "$source" ] && [ -z "$(ls -A "$source" 2>/dev/null)" ]; then
+            print_warning "$config_name source directory is empty"
+            ((failed++))
+            continue
+        fi
+
+        # Handle existing target
+        if [ -e "$target" ] && [ "$overwrite_all" = false ]; then
+            print_warning "$config_name already exists at $target"
+            if ! confirm "Overwrite $config_name?" "n"; then
+                print_info "Skipping $config_name"
                 ((skipped++))
-            else
-                ((failed++))
+                continue
             fi
         fi
+
+        # Remove existing if present
+        if [ -e "$target" ]; then
+            print_info "Removing old $config_name"
+            rm -rf "$target" || {
+                print_error "Failed to remove old $config_name"
+                ((failed++))
+                continue
+            }
+        fi
+
+        # Copy the config
+        print_info "Copying $config_name..."
+        mkdir -p "$target" || {
+            print_error "Failed to create target directory for $config_name"
+            ((failed++))
+            continue
+        }
+
+        # Explicitly handle cp errors without exiting
+        set +e
+        cp -r "$source"/. "$target"/ 2>&1
+        local cp_exit_code=$?
+        set -e
+
+        if [ $cp_exit_code -ne 0 ]; then
+            print_error "Failed to copy $config_name (cp returned exit code $cp_exit_code)"
+            ((failed++))
+        else
+            local file_count=$(find "$target" -type f 2>/dev/null | wc -l)
+            print_success "$config_name copied successfully ($file_count files)"
+            ((copied++))
+        fi
+
+        print_info "Loop iteration complete for $config_name, continuing to next..."
     done
+
+    print_info "Finished processing all JlessOS configs"
 
     echo ""
 
@@ -530,14 +603,33 @@ copy_configs() {
     local nvim_source="$dotfiles_dir/nvimConf"
     local nvim_target="$CONFIG_DIR/nvim"
 
-    if copy_single_config "$nvim_source" "$nvim_target" "nvim"; then
-        ((copied++))
-    else
-        if [ -e "$nvim_target" ]; then
-            ((skipped++))
-        else
-            ((failed++))
+    if [ -e "$nvim_source" ]; then
+        if [ -e "$nvim_target" ] && [ "$overwrite_all" = false ]; then
+            if confirm "Overwrite nvim config?" "n"; then
+                rm -rf "$nvim_target"
+            else
+                ((skipped++))
+                nvim_source=""  # Skip nvim
+            fi
+        elif [ -e "$nvim_target" ]; then
+            rm -rf "$nvim_target"
         fi
+
+        if [ -n "$nvim_source" ]; then
+            print_info "Copying nvim..."
+            mkdir -p "$nvim_target"
+
+            if cp -r "$nvim_source"/. "$nvim_target"/; then
+                print_success "nvim copied successfully ($(find "$nvim_target" -type f 2>/dev/null | wc -l) files)"
+                ((copied++))
+            else
+                print_error "Failed to copy nvim"
+                ((failed++))
+            fi
+        fi
+    else
+        print_warning "nvimConf not found at $nvim_source"
+        ((failed++))
     fi
 
     echo ""
