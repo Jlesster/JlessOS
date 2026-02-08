@@ -197,14 +197,14 @@ install_arch_deps() {
     # Python packages for Material You theming
     print_info "Installing Python packages for theming system"
     local python_packages=(
-        materialyoucolor
-        Pillow
+        pyhton-pillow
         python-opencv
     )
 
     if confirm "Install Python theming dependencies?"; then
         for pkg in "${python_packages[@]}"; do
-            execute "pip3 install --user $pkg" "Installing $pkg"
+            execute "sudo pacman -S $pkg" "Installing $pkg"
+            execute "yay -S kde-material-you-color" "Installing Material You"
         done
     fi
 
