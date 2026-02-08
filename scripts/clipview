@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+# ~/.local/bin/clipman
+# Enhanced clipboard history manager with proper image handling
+
+set -e
+
+# Check dependencies
+command -v cliphist >/dev/null 2>&1 || { echo "Error: cliphist not installed"; exit 1; }
+command -v fzf >/dev/null 2>&1 || { echo "Error: fzf not installed"; exit 1; }
+command -v wl-copy >/dev/null 2>&1 || { echo "Error: wl-clipboard not installed"; exit 1; }
+
+# Configuration
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/clipman"
+PREVIEW_SIZE="60x30"
+MAX_TEXT_LINES=50
+
+# Create cache directory
+mkdir -p "$CACHE_DIR"
+
+# Cleanup old preview cache on start
+find "$CACHE_DIR" -name "preview_*" -mmin +60 -delete 2>/dev/null || true
+
+# Preview function
+preview_item() {
+    local item="$1"
+    local preview_file="$CACHE_DIR/preview_$"
+
+    # Clear any existing kitty images first
+    if command -v kitty >/dev/null 2>&1 && [ -n "$KITTY_WINDOW_ID" ]; then
+        kitty +kitten icat --clear --transfer-mode=memory 2>/dev/null
+    fi
+
+    # Decode the clipboard item
+    if ! echo "$item" | cliphist decode > "$preview_file" 2>/dev/null; then
+        echo "⚠ Failed to decode clipboard item"
+        rm -f "$preview_file"
+        return 1
+    fi
+
+    # Check if empty
+    if [ ! -s "$preview_file" ]; then
+        echo "∅ Empty clipboard item"
+        rm -f "$preview_file"
+        return 0
+    fi
+
+    # Get file info
+    local size=$(wc -c < "$preview_file")
+    local mime=$(file -b --mime-type "$preview_file" 2>/dev/null)
+
+    # Handle images
+    if [[ "$mime" == image/* ]]; then
+        # Get image dimensions if possible
+        local dimensions=$(identify -format "%wx%h" "$preview_file" 2>/dev/null || echo "unknown")
+
+        echo "🖼  Image: $mime"
+        echo "📏 Size: $(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes")"
+        [ "$dimensions" != "unknown" ] && echo "📐 Dimensions: $dimensions"
+        echo ""
+
+        # Get terminal/preview dimensions dynamically
+        local term_width=${FZF_PREVIEW_COLUMNS:-60}
+        local term_height=${FZF_PREVIEW_LINES:-30}
+
+        # Reserve space for header (4-5 lines)
+        term_height=$((term_height - 5))
+
+        # Try different image preview tools in order of preference
+        if command -v kitty >/dev/null 2>&1 && [ -n "$KITTY_WINDOW_ID" ]; then
+            # Use kitty's icat with proper scaling
+            kitty +kitten icat \
+                --clear \
+                --transfer-mode=memory \
+                --stdin=no \
+                --scale-up \
+                --place="${term_width}x${term_height}@0x5" \
+                "$preview_file" 2>/dev/null
+        elif command -v chafa >/dev/null 2>&1; then
+            # Chafa with dynamic sizing and stretch to fill
+            chafa \
+                --size="${term_width}x${term_height}" \
+                --format=symbols \
+                --stretch \
+                "$preview_file"
+        elif command -v viu >/dev/null 2>&1; then
+            # Viu with dynamic sizing
+            viu -w "$term_width" -h "$term_height" "$preview_file"
+        else
+            echo "📦 Install 'chafa' or 'viu' for image preview"
+            echo ""
+            echo "Metadata:"
+            identify "$preview_file" 2>/dev/null || file "$preview_file"
+        fi
+    else
+        # Handle text and other content
+        local first_line=$(head -n1 "$preview_file")
+
+        # Check if it looks like code or structured data
+        if [[ "$mime" == application/json ]] || echo "$first_line" | grep -qE '^\s*[\{\[]'; then
+            echo "📄 JSON/Structured Data"
+            echo ""
+            if command -v bat >/dev/null 2>&1; then
+                bat --color=always --style=plain --language=json "$preview_file" 2>/dev/null || cat "$preview_file"
+            elif command -v jq >/dev/null 2>&1; then
+                jq -C . "$preview_file" 2>/dev/null || cat "$preview_file"
+            else
+                cat "$preview_file"
+            fi
+        elif [[ "$first_line" =~ ^https?:// ]]; then
+            echo "🔗 URL"
+            echo ""
+            cat "$preview_file"
+        elif [[ "$mime" == text/* ]] || file "$preview_file" | grep -q "text"; then
+            echo "📝 Text ($(wc -l < "$preview_file") lines, $(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes"))"
+            echo ""
+            if command -v bat >/dev/null 2>&1; then
+                bat --color=always --style=plain --line-range=:$MAX_TEXT_LINES "$preview_file" 2>/dev/null || head -n $MAX_TEXT_LINES "$preview_file"
+            else
+                head -n $MAX_TEXT_LINES "$preview_file"
+            fi
+
+            # Show truncation notice
+            local total_lines=$(wc -l < "$preview_file")
+            if [ "$total_lines" -gt "$MAX_TEXT_LINES" ]; then
+                echo ""
+                echo "⋯ Showing first $MAX_TEXT_LINES of $total_lines lines"
+            fi
+        else
+            echo "📦 Binary/Unknown ($mime)"
+            echo "📏 Size: $(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes")"
+            echo ""
+            echo "Hex preview:"
+            hexdump -C "$preview_file" | head -n 16
+        fi
+    fi
+
+    rm -f "$preview_file"
+}
+
+# Export function for fzf preview
+export -f preview_item
+export CACHE_DIR PREVIEW_SIZE MAX_TEXT_LINES
+
+# Format list items with icons
+format_list() {
+    while IFS= read -r line; do
+        # Get a preview of the content
+        local preview=$(echo "$line" | cliphist decode 2>/dev/null | head -c 100)
+        local mime=$(echo "$line" | cliphist decode 2>/dev/null | file -b --mime-type -)
+        local icon="📄"
+
+        # Select icon based on content type
+        case "$mime" in
+            image/*) icon="🖼 " ;;
+            video/*) icon="🎬" ;;
+            audio/*) icon="🎵" ;;
+            application/pdf) icon="📕" ;;
+            application/json) icon="📊" ;;
+            text/html) icon="🌐" ;;
+            text/*) icon="📝" ;;
+        esac
+
+        # Check for URLs
+        if echo "$preview" | grep -qE '^https?://'; then
+            icon="🔗"
+        fi
+
+        # Truncate and clean preview
+        preview=$(echo "$preview" | tr '\n' ' ' | sed 's/\s\+/ /g' | cut -c1-80)
+
+        echo "$icon $preview" | sed "s|\t|${line}\t|"
+    done
+}
+
+# Main FZF interface
+selected=$(cliphist list | \
+    fzf \
+        --prompt="📋 Clipboard > " \
+        --header="󰌑 ENTER: copy | CTRL-D: delete | CTRL-E: edit | CTRL-Y: wipe all | ESC: exit" \
+        --border=rounded \
+        --height=95% \
+        --layout=reverse \
+        --ansi \
+        --no-info \
+        --pointer="▶" \
+        --marker="✓" \
+        --preview='preview_item {}' \
+        --preview-window='right:60%:wrap:border-left' \
+        --bind='ctrl-d:execute-silent(echo {} | cliphist delete)+reload(cliphist list)' \
+        --bind='ctrl-y:execute(cliphist wipe && echo "All clipboard history cleared" | timeout 2 fzf --disabled --preview-window=hidden)+reload(cliphist list)' \
+        --bind='ctrl-e:execute(tmpfile=$(mktemp) && echo {} | cliphist decode > "$tmpfile" && ${EDITOR:-nvim} "$tmpfile" && cat "$tmpfile" | wl-copy && rm "$tmpfile")' \
+        --bind='esc:abort' \
+        --bind='ctrl-/:toggle-preview' \
+        --bind='ctrl-u:preview-half-page-up' \
+        --bind='ctrl-d:preview-half-page-down' \
+        --color='prompt:#89b4fa,pointer:#f38ba8,marker:#a6e3a1,header:#94e2d5')
+
+# Copy selected item to clipboard
+if [ -n "$selected" ]; then
+    if echo "$selected" | cliphist decode | wl-copy; then
+        # Get content type for notification
+        mime=$(echo "$selected" | cliphist decode 2>/dev/null | file -b --mime-type -)
+        case "$mime" in
+            image/*) notify-send "📋 Clipboard" "Image copied to clipboard" ;;
+            text/*|*)
+                preview=$(echo "$selected" | cliphist decode | head -c 50)
+                notify-send "📋 Clipboard" "Copied: ${preview}..."
+                ;;
+        esac
+    else
+        notify-send "❌ Error" "Failed to copy to clipboard"
+    fi
+fi
+
+# Cleanup
+find "$CACHE_DIR" -name "preview_$$*" -delete 2>/dev/null || true

@@ -1,0 +1,115 @@
+// Modified from: 24.jsonc
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+      "type": "auto",
+      "source": "/home/jless/.config/fastfetch/ascii.txt",
+      "padding": {
+        "top": 2
+      },
+      "color": {
+      "2": "#f921df",
+      "1": "#18faaa",
+    }
+    },
+    "display": {
+      "separator": "",
+      "constants": [
+        // CONSTANT {$1} - VERTICAL BARS AT START AND 75th CHARACTERS FORWARD AND BACKWARD
+        "\u001b[10m│                                   │\u001b[35D\u001b[60m"
+      ]
+    },
+    "modules": [
+      // CUSTOM - Top UI bar
+      {
+        "type": "custom",
+        "key": "{#90}╭ Keys ───────╮",
+        "format": "{#90}╭ Values ───────────────────────────╮",
+      },
+      {
+        "type": "datetime",
+        "key": "{#90}│ {#92}Datetime    {#90}│",
+        "format": "{$1}{year}-{month-pretty}-{day-in-month} {hour-pretty}:{minute-pretty}:{second-pretty}  "
+      },
+      {
+        "type": "title",
+        "key": "{#90}│ {#92}User        {#90}│",
+        "format": "{$1}{user-name}  {#2}[{home-dir}]"
+      },
+      {
+        "type": "title",
+        "key": "{#90}│ {#93}Host        {#90}│",
+        "format": "{$1}{host-name}"
+      },
+      {
+        "type": "terminal",
+        "key": "{#90}│ {#95}Terminal    {#90}│",
+        "format": "{$1}{pretty-name}"
+      },
+      {
+        "type": "uptime",
+        "key": "{#90}│ {#93}Uptime      {#90}│",
+        "format": "{$1}{?days}{days} Days + {?}{hours}:{minutes}:{seconds}"
+      },
+      {
+        "type": "os",
+        "key": "{#90}│ {#93}OS          {#90}│",
+        "format": "{$1}{?pretty-name}{pretty-name}{?}{/pretty-name}{name}{/} {#2}[{arch}]"
+      },
+      {
+        "type": "cpu",
+        "key": "{#90}│ {#91}CPU         {#90}│",
+        "showPeCoreCount": true,
+        "temp": true,
+        "format": "{$1}{name} {#2}[C:{core-types}]"
+      },
+
+      {
+        "type": "memory",
+        "key": "{#90}│ {#91}Memory      {#90}│",
+        "format": "{$1}{used} 󰜥 {total} {#2}{percentage}"
+      },
+      {
+        "type": "disk",
+        "key": "{#90}│ {#91}Disk        {#90}│",
+        "format": "{$1}{size-used} 󰜥 {size-total} {#2}{size-percentage}"
+      },
+      {
+        "type": "terminalfont",
+        "key": "{#90}│ {#95}Font        {#90}│",
+        "format": "{$1}{name}  {#2}[{size}]"
+      },
+      {
+        "type": "gpu",
+        "key": "{#90}│ {#91}GPU         {#90}│",
+        "detectionMethod": "auto",
+        "driverSpecific": true,
+        "format": "{$1}{name}"
+      },
+
+      // CUSTOM - Button UI bar
+      {
+        "type": "custom",
+        "key": "{#90}╰─────────────╯",
+        "format": "{#90}╰───────────────────────────────────╯",
+      },
+      "break",
+      {
+        "type": "custom",
+        "key": " ",
+        "format": "{#90}╭ Colors ──────────────────────────╮",
+      },
+      {
+        "type": "custom",
+        "format": "{#90}│ {#40}    {#41}    {#42}    {#43}    {#44}    {#45}    {#46}    {#47}    {#} {#90}│",
+      },
+      {
+        "type": "custom",
+        "format": "{#90}│ {#100}    {#101}    {#102}    {#103}    {#104}    {#105}    {#106}    {#107}    {#} {#90}│",
+      },
+      {
+        "type": "custom",
+        "format": "{#90}╰──────────────────────────────────╯",
+      },
+    ]
+  }

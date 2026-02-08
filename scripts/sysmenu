@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+
+# Enhanced system menu with Material You theming support
+# Integrates wallpaper switching and theme generation
+
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+THEME_CONFIG="$HOME/.config/material-theme/config.json"
+
+choice=$(printf "󰸉 Wallpaper & Theme
+ System Monitor
+ File Manager
+ Git UI
+ Services
+ Logs
+󰖟 Network Info
+ Bluetooth
+ Edit Hyprland Config
+ Edit Fish Config
+ Power Menu
+" | fzf --prompt="System > " --height=40% --border --ansi)
+
+# Exit if no choice was made (user pressed ESC)
+[ -z "$choice" ] && exit 0
+
+case "$choice" in
+    "󰸉 Wallpaper & Theme")
+        # Submenu for wallpaper and theme options
+        theme_choice=$(printf "󰸉 Change Wallpaper
+ Pick Random Wallpaper
+ Theme Mode (Dark/Light)
+ Theme Scheme
+ Transparency
+ Reload Current Theme
+" | fzf --prompt="Theme > " --height=40% --border --ansi)
+        
+        # Exit if no choice was made
+        [ -z "$theme_choice" ] && exit 0
+        
+        case "$theme_choice" in
+            "󰸉 Change Wallpaper")
+                # Use fzf with preview to select wallpaper
+                if [ -d "$WALLPAPER_DIR" ]; then
+                    selected=$(find "$WALLPAPER_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | \
+                        fzf --prompt="Wallpaper > " \
+                            --preview 'kitty +kitten icat --clear --transfer-mode=memory --stdin=no --place=40x40@0x0 {} 2>/dev/null' \
+                            --preview-window=left:40% \
+                            --height=80% \
+                            --border)
+                    
+                    if [ -n "$selected" ]; then
+                        notify-send "󰸉 Changing wallpaper..." "Generating Material You theme from image"
+                        # Run in background and detach
+                        nohup sh -c "switchwall --image '$selected' && notify-send '✓ Theme applied' 'Wallpaper: $(basename "$selected")'" >/dev/null 2>&1 &
+                        disown
+                    fi
+                else
+                    notify-send "Error" "Wallpaper directory not found: $WALLPAPER_DIR"
+                fi
+                ;;
+                
+            " Pick Random Wallpaper")
+                if [ -d "$WALLPAPER_DIR" ]; then
+                    random_wall=$(find "$WALLPAPER_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | shuf -n 1)
+                    if [ -n "$random_wall" ]; then
+                        notify-send "󰸉 Random wallpaper" "Applying: $(basename "$random_wall")"
+                        # Run in background and detach
+                        nohup sh -c "switchwall --image '$random_wall' && notify-send '✓ Theme applied' 'Random wallpaper set'" >/dev/null 2>&1 &
+                        disown
+                    fi
+                else
+                    notify-send "Error" "Wallpaper directory not found: $WALLPAPER_DIR"
+                fi
+                ;;
+                
+            " Theme Mode (Dark/Light)")
+                # Get current mode
+                current_mode="dark"
+                if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                    current_mode=$(jq -r '.theming.mode // "dark"' "$THEME_CONFIG")
+                fi
+                
+                # Toggle mode
+                if [ "$current_mode" = "dark" ]; then
+                    new_mode="light"
+                else
+                    new_mode="dark"
+                fi
+                
+                # Get current wallpaper
+                current_wall=""
+                if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                    current_wall=$(jq -r '.wallpaper.current // ""' "$THEME_CONFIG")
+                fi
+                
+                notify-send " Switching to ${new_mode} mode..." "Regenerating theme"
+                
+                if [ -n "$current_wall" ] && [ -f "$current_wall" ]; then
+                    # Run in background and detach
+                    nohup sh -c "switchwall --image '$current_wall' --mode '$new_mode'" >/dev/null 2>&1 &
+                    disown
+                else
+                    notify-send "Error" "No current wallpaper set. Please select a wallpaper first."
+                fi
+                ;;
+                
+            " Theme Scheme")
+                # Let user pick a Material You scheme
+                scheme=$(printf "vibrant
+tonal-spot
+neutral
+expressive
+fidelity
+monochrome
+content
+" | fzf --prompt="Scheme > " --height=40% --border)
+                
+                if [ -n "$scheme" ]; then
+                    # Get current wallpaper
+                    current_wall=""
+                    if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                        current_wall=$(jq -r '.wallpaper.current // ""' "$THEME_CONFIG")
+                    fi
+                    
+                    notify-send " Changing scheme..." "Applying: $scheme"
+                    
+                    if [ -n "$current_wall" ] && [ -f "$current_wall" ]; then
+                        # Run in background and detach
+                        nohup sh -c "switchwall --image '$current_wall' --scheme '$scheme' && notify-send '✓ Scheme applied' 'Theme scheme: $scheme'" >/dev/null 2>&1 &
+                        disown
+                    else
+                        notify-send "Error" "No current wallpaper set. Please select a wallpaper first."
+                    fi
+                fi
+                ;;
+                
+            " Transparency")
+                # Get current transparency setting
+                current_transparency="opaque"
+                if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                    current_transparency=$(jq -r '.theming.transparency // "opaque"' "$THEME_CONFIG")
+                fi
+                
+                # Toggle transparency
+                if [ "$current_transparency" = "opaque" ]; then
+                    new_transparency="transparent"
+                else
+                    new_transparency="opaque"
+                fi
+                
+                # Update config
+                if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                    tmp=$(mktemp)
+                    jq --arg trans "$new_transparency" '.theming.transparency = $trans' "$THEME_CONFIG" > "$tmp"
+                    mv "$tmp" "$THEME_CONFIG"
+                    
+                    # Get current wallpaper and regenerate
+                    current_wall=$(jq -r '.wallpaper.current // ""' "$THEME_CONFIG")
+                    
+                    if [ -n "$current_wall" ] && [ -f "$current_wall" ]; then
+                        notify-send " Changing transparency..." "Setting: $new_transparency"
+                        # Run in background and detach
+                        nohup sh -c "switchwall --image '$current_wall' && notify-send '✓ Transparency changed' 'Mode: $new_transparency'" >/dev/null 2>&1 &
+                        disown
+                    fi
+                fi
+                ;;
+                
+            " Reload Current Theme")
+                # Reload the current theme without changing wallpaper
+                if [ -f "$THEME_CONFIG" ] && command -v jq >/dev/null 2>&1; then
+                    current_wall=$(jq -r '.wallpaper.current // ""' "$THEME_CONFIG")
+                    
+                    if [ -n "$current_wall" ] && [ -f "$current_wall" ]; then
+                        notify-send " Reloading theme..." "Regenerating all configs"
+                        # Run in background and detach
+                        nohup sh -c "switchwall --image '$current_wall' && notify-send '✓ Theme reloaded' 'All configs regenerated'" >/dev/null 2>&1 &
+                        disown
+                    else
+                        notify-send "Error" "No current wallpaper set"
+                    fi
+                else
+                    notify-send "Error" "Theme config not found"
+                fi
+                ;;
+        esac
+        ;;
+        
+	" System Monitor")
+	    setsid -f systemd-run --user --scope kitty --class "btop-float" -e btop < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" File Manager")
+	    setsid -f systemd-run --user --scope kitty --class "yazi-float" -e yazi < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" Git UI")
+	    setsid -f systemd-run --user --scope kitty --class "lazygit-float" -e lazygit < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" Services")
+	    service=$(systemctl list-units --type=service --no-pager --no-legend | awk '{print $1}' | fzf --prompt="Services > ")
+	    if [ -n "$service" ]; then
+		setsid -f systemd-run --user --scope kitty --class "service-float" -e sh -c "systemctl status $service; echo; read -p 'Press enter to exit...'" < /dev/null >/dev/null 2>&1
+	    fi
+	    ;;
+	    
+	" Logs")
+	    setsid -f systemd-run --user --scope kitty --class "logs-float" -e sh -c 'journalctl -xe | less' < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	"󰖟 Network Info")
+	    setsid -f systemd-run --user --scope kitty --class "network-float" -e sh -c 'ip a; echo; read -p "Press enter to exit..."' < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" Bluetooth")
+	    setsid -f systemd-run --user --scope kitty --class "bluetooth-float" -e sh -c 'bluetoothctl devices; echo; read -p "Press enter to exit..."' < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" Edit Hyprland Config")
+	    setsid -f systemd-run --user --scope kitty --class "editor-float" -e nvim ~/.config/hypr/hyprland.conf < /dev/null >/dev/null 2>&1
+	    ;;
+	    
+	" Edit Fish Config")
+	    setsid -f systemd-run --user --scope kitty --class "editor-float" -e nvim ~/.config/fish/config.fish < /dev/null >/dev/null 2>&1
+	    ;;        
+    " Power Menu")
+        power=$(printf "⏻ Shutdown\n Reboot\n Logout" | fzf --prompt="Power > " --ansi)
+        case "$power" in
+            "⏻ Shutdown") systemctl poweroff ;;
+            " Reboot") systemctl reboot ;;
+            " Logout") hyprctl dispatch exit ;;
+        esac
+        ;;
+esac
+
+# Script exits automatically after launching, closing the sysmenu window

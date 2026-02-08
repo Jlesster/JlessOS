@@ -1,0 +1,9 @@
+width=500
+height=220
+location=center
+prompt=login:
+filter_rate=100
+allow_images=false
+no_actions=true
+term=kitty
+

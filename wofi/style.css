@@ -1,0 +1,36 @@
+/* Auto-generated Wofi style (Material You) */
+
+* {
+  font-family: Iosevka;
+  font-size: 18px;
+}
+
+window {
+  background-color: rgba(52, 52, 52, 0.6);
+  border: 2px solid #B2C5FF;
+  padding: 10px;
+}
+
+#input {
+  background-color: rgba(24, 27, 37, 0.46);
+  color: #E0E2EF;
+  border: 2px solid #C4C3EB;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+}
+
+#entry {
+  padding: 6px 10px;
+  color: #C3C6D6;
+}
+
+#entry:selected {
+  background-color: #B2C5FF;
+  color: #002B73;
+  font-weight: bold;
+}
+
+#entry:hover {
+  background-color: #272A34;
+  color: #E8D3DE;
+}

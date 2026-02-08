@@ -1,0 +1,36 @@
+# 🖥 System
+Super+M :: System menu
+Super+D :: Application launcher
+Super+Q :: Close window
+Super+Shift+R :: Reload shell
+
+# 📋 Panels & Tools
+Super+N :: Control panel
+Super+/ :: This cheatsheet
+Super+V :: Clipboard history
+
+# 💻 Core Applications
+Super+T :: Terminal
+Super+E :: File manager (yazi)
+Super+G :: Git manager (lazygit)
+Super+B :: System monitor (btop)
+Super+C :: Text editor (neovim)
+Super+Shift+D :: GUI file manager (Dolphin)
+
+# 📸 Screenshots
+Super+Shift+S :: Capture screen area
+
+# 🪟 Window Management
+Super+Z :: Move window
+Super+X :: Resize window
+Super+LeftClick :: Drag floating window
+Super+RightClick :: Resize floating window
+
+# 🎵 Media Controls
+Play/Pause :: Toggle playback
+Next/Prev :: Skip tracks
+Volume+/- :: Adjust volume (±5%)
+Mute :: Toggle audio mute
+
+# 🔆 Display
+Brightness+/- :: Adjust screen brightness (±10%)

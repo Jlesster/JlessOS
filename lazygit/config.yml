@@ -1,0 +1,36 @@
+# Auto-generated LazyGit theme colors
+gui:
+  theme:
+    activeBorderColor:
+      - "#C297FF"
+      - bold
+    inactiveBorderColor:
+      - "#7249AB"
+    optionsTextColor:
+      - "#D4A5FF"
+    selectedLineBgColor:
+      - "#36006E"
+    selectedRangeBgColor:
+      - "#480E8A"
+    cherryPickedCommitBgColor:
+      - "#5034AA"
+    cherryPickedCommitFgColor:
+      - "#E6DFF2"
+    unstagedChangesColor:
+      - "#8E81D2"
+    defaultFgColor:
+      - "#E6D7F4"
+    searchingActiveBorderColor:
+      - "#D498FF"
+
+  nerdFontsVersion: "3"
+  showFileTree: true
+  showRandomTip: false
+
+# Git diff settings with custom colors
+git:
+  paging:
+    colorArg: always
+    useConfig: false
+    # Using delta for better diff rendering
+    pager: delta --dark --paging=never --line-numbers --minus-style='syntax "#8E81D2"' --minus-emph-style='syntax "#8E81D2"' --plus-style='syntax "#C67CC5"' --plus-emph-style='syntax "#C67CC5"' --hunk-header-style='file line-number syntax'

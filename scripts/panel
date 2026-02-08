@@ -1,0 +1,371 @@
+#!/usr/bin/env bash
+# TUI Control Dashboard - Compact layout for 450×1030px
+
+THEME_CONFIG="$HOME/.config/material-theme/config.json"
+TODO_FILE="$HOME/.local/share/todos.txt"
+CACHE_DIR="$HOME/.cache/tui-dashboard"
+mkdir -p "$CACHE_DIR"
+
+# Colors
+RESET="\e[0m"
+BOLD="\e[1m"
+DIM="\e[2m"
+BLUE="\e[38;5;117m"
+CYAN="\e[38;5;159m"
+GREEN="\e[38;5;150m"
+YELLOW="\e[38;5;229m"
+MAGENTA="\e[38;5;183m"
+GRAY="\e[38;5;245m"
+
+# Get media player info
+get_media_info() {
+    if ! command -v playerctl &>/dev/null; then
+        echo "no_player"
+        return
+    fi
+
+    local status=$(playerctl status 2>/dev/null)
+    if [ -z "$status" ]; then
+        echo "no_media"
+        return
+    fi
+
+    local title=$(playerctl metadata title 2>/dev/null)
+    local artist=$(playerctl metadata artist 2>/dev/null)
+    local position=$(playerctl position 2>/dev/null | cut -d. -f1)
+    local length=$(playerctl metadata mpris:length 2>/dev/null)
+
+    if [ -n "$length" ]; then
+        length=$((length / 1000000))
+    fi
+
+    echo "$status|$title|$artist|$position|$length"
+}
+
+# Format time
+format_time() {
+    local seconds=$1
+    printf "%02d:%02d" $((seconds / 60)) $((seconds % 60))
+}
+
+# Draw progress bar
+draw_progress_bar() {
+    local current=$1
+    local total=$2
+    local width=30
+
+    if [ -z "$current" ] || [ -z "$total" ] || [ "$total" -eq 0 ]; then
+        printf "${GRAY}─%.0s${RESET}" $(seq 1 $width)
+        return
+    fi
+
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+
+    printf "${CYAN}━%.0s" $(seq 1 $filled)
+    printf "${GRAY}─%.0s${RESET}" $(seq 1 $empty)
+}
+
+# Header
+draw_header() {
+    local time=$(date '+%l:%M %p' | xargs)
+    local date=$(date '+%A, %B %d')
+
+    echo -e ""
+    echo -e "  ${BOLD}${time}${RESET}  ${GRAY}${date}${RESET}"
+    echo -e ""
+}
+
+# Media player widget (compact)
+draw_media_player() {
+    local info=$(get_media_info)
+
+    if [ "$info" = "no_player" ] || [ "$info" = "no_media" ]; then
+      echo -e "${BLUE}╰────────────────────────────────╯${RESET}"
+        echo -e "${BLUE}│${RESET} ${DIM}Nothing playing${RESET}                               ${BLUE}│${RESET}"
+        echo -e "${BOLD}${BLUE}╭─ 󰝚 Now Playing ──────────────────────────────╮${RESET}"
+        echo -e "${BLUE}│${RESET}                                              ${BLUE}│${RESET}"
+    else
+        IFS='|' read -r status title artist position length <<< "$info"
+
+        title="${title:0:38}"
+        artist="${artist:0:38}"
+
+        local status_icon="󰐊"
+        [ "$status" = "Playing" ] && status_icon="󰐊" || status_icon="󰤤 "
+
+        echo -e "${BLUE}╰─────────────────────────────────────────────╯${RESET}"
+        echo -e "${BLUE}│${RESET} ${status_icon} ${BOLD}${title:-Unknown}${RESET}"
+        echo -e "${BLUE}│${RESET} ${DIM}${artist:-Unknown Artist}${RESET}"
+
+        if [ -n "$position" ] && [ -n "$length" ]; then
+            local progress=$(draw_progress_bar "$position" "$width")
+            local pos_fmt=$(format_time "$position")
+            local len_fmt=$(format_time "$length")
+            echo -e "${BLUE}│${RESET} ${pos_fmt} ${progress} ${len_fmt}"
+        else
+            echo -e "${BLUE}│${RESET}"
+        fi
+
+        echo -e "${BOLD}${BLUE}╭─ 󰝚 Now Playing ─────────────────────────────╮${RESET}"
+    fi
+}
+
+# System info (compact)
+draw_system_info() {
+    local uptime_str=$(uptime -p | sed 's/up //' | sed 's/ hours\?/h/' | sed 's/ minutes\?/m/')
+    local battery_info=""
+
+    if [ -d "/sys/class/power_supply/BAT0" ] || [ -d "/sys/class/power_supply/BAT1" ]; then
+        local battery=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1)
+        local status=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1)
+        local bat_icon="󰂄"
+        [ "$status" = "Charging" ] && bat_icon="󰂄"
+        battery_info="${bat_icon} ${battery}%   "
+    fi
+
+    echo -e ""
+    echo -e "${YELLOW}╰─────────────────────────────────────────────╯${RESET}"
+    echo -e "${YELLOW}│${RESET} ${battery_info}⏱ ${uptime_str}"
+    echo -e "${BOLD}${YELLOW}╭─ 󰇄 System ──────────────────────────────────╮${RESET}"
+}
+
+# Quick settings (compact)
+draw_quick_settings() {
+    local volume="50"
+    if command -v pamixer &>/dev/null; then
+        volume=$(pamixer --get-volume)
+    fi
+
+    local brightness="N/A"
+    if command -v brightnessctl &>/dev/null; then
+        local current=$(brightnessctl get)
+        local max=$(brightnessctl max)
+        brightness="$((current * 100 / max))%"
+    fi
+
+    local wifi_name="Disconnected"
+    if command -v nmcli &>/dev/null; then
+        local network=$(nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2)
+        [ -n "$network" ] && wifi_name="${network:0:20}"
+    fi
+
+    local bt_status="Off"
+    if command -v bluetoothctl &>/dev/null; then
+        bluetoothctl show | grep -q "Powered: yes" && bt_status="On"
+    fi
+
+    echo -e ""
+    echo -e "${GREEN}╰─────────────────────────────────────────────╯${RESET}"
+    echo -e "${GREEN}│${RESET}   󰕾 Volume ${volume}%         󰃟 Brightness ${brightness}"
+    echo -e "${GREEN}│${RESET}   󰖩 ${wifi_name}             󰂯 Bluetooth ${bt_status}"
+    echo -e "${BOLD}${GREEN}╭─ 󰒓 Quick Settings ──────────────────────────╮${RESET}"
+}
+
+# Notifications (compact)
+draw_notifications() {
+    local has_notif=false
+    local notif_count=0
+
+    if command -v dunstctl &>/dev/null; then
+        notif_count=$(dunstctl count waiting)
+        if [ "$notif_count" -gt 0 ]; then
+            has_notif=true
+        fi
+    fi
+
+    echo -e ""
+
+    echo -e "${MAGENTA}╰─────────────────────────────────────────────╯${RESET}"
+    if [ "$has_notif" = false ]; then
+        echo -e "${MAGENTA}│${RESET} ${DIM}No new notifications${RESET}"
+    else
+        echo -e "${MAGENTA}│${RESET} ${BOLD}${notif_count} new notifications${RESET}"
+
+        dunstctl history | jq -r '.data[0][] | "• \(.appname.data // "System"): \(.summary.data)"' 2>/dev/null | head -n 2 | while IFS= read -r line; do
+            echo -e "${MAGENTA}│${RESET} ${line:0:44}"
+        done
+    fi
+
+    echo -e "${BOLD}${MAGENTA}╭─ 󰂛 Notifications ───────────────────────────╮${RESET}"
+}
+
+# Tasks (compact)
+draw_tasks() {
+    local task_count=0
+
+    if [ -f "$TODO_FILE" ] && [ -s "$TODO_FILE" ]; then
+        task_count=$(wc -l < "$TODO_FILE")
+    fi
+
+    echo -e ""
+
+    echo -e "${CYAN}╰─────────────────────────────────────────────╯${RESET}"
+    if [ "$task_count" -eq 0 ]; then
+        echo -e "${CYAN}│${RESET} ${DIM}No tasks${RESET}"
+    else
+        echo -e "${CYAN}│${RESET} ${BOLD}${task_count} tasks${RESET}"
+
+        head -n 3 "$TODO_FILE" | while IFS= read -r task; do
+            echo -e "${CYAN}│${RESET} ☐ ${task:0:42}"
+        done
+
+        if [ "$task_count" -gt 3 ]; then
+            echo -e "${CYAN}│${RESET} ${DIM}... +$((task_count - 3)) more${RESET}"
+        fi
+    fi
+
+    echo -e "${BOLD}${CYAN}╭─ 󰄀 Tasks ───────────────────────────────────╮${RESET}"
+}
+
+# Calendar (compact)
+draw_calendar() {
+    if ! command -v calcurse &>/dev/null; then
+        return
+    fi
+
+    local today=$(date '+%d')
+    local appointments=""
+
+    # Get today's appointments from calcurse
+    appointments=$(calcurse -d1 --format-apt='• %S - %m' 2>/dev/null | head -n 3)
+
+    echo -e ""
+
+    echo -e "${MAGENTA}╰────────────────────────────────────────────╯${RESET}"
+
+    if [ -z "$appointments" ]; then
+        echo -e "${MAGENTA}│${RESET} ${DIM}No appointments today${RESET}"
+    else
+        echo -e "${MAGENTA}│${RESET} ${BOLD}Today's appointments:${RESET}"
+        echo "$appointments" | while IFS= read -r apt; do
+            echo -e "${MAGENTA}│${RESET} ${apt:0:44}"
+        done
+    fi
+
+    # Mini calendar from calcurse
+    cal 2>/dev/null | head -n 8 | tail -n 7 | while IFS= read -r line; do
+        echo -e "${MAGENTA}│${RESET} ${line:0:44}"
+    done
+
+    echo -e "${BOLD}${MAGENTA}╭─ 󰃭 Calendar ───────────────────────────────╮${RESET}"
+}
+
+# Actions menu
+draw_actions() {
+    echo -e "󰐊  Media: Play/Pause"
+    echo -e "󰒮  Media: Previous Track"
+    echo -e "󰒭  Media: Next Track"
+    echo -e ""
+    echo -e "󰄀  Add New Task"
+    echo -e "󰄬  Complete Task"
+    echo -e "󰃢  Clear All Notifications"
+    echo -e "󰃭  Open Calendar"
+    echo -e ""
+    echo -e "󰅖  Close Dashboard"
+    echo -e "${DIM}─────────────────── Actions ──────────────────${RESET}"
+}
+
+# Build dashboard
+build_dashboard() {
+    clear
+    draw_actions
+    draw_media_player
+    draw_system_info
+    draw_quick_settings
+    draw_notifications
+    draw_tasks
+    draw_calendar
+    draw_header
+}
+
+# Handle media controls
+handle_media_action() {
+    local action="$1"
+
+    if ! command -v playerctl &>/dev/null; then
+        return
+    fi
+
+    case "$action" in
+        "play_pause") playerctl play-pause ;;
+        "next") playerctl next ;;
+        "previous") playerctl previous ;;
+    esac
+}
+
+# Handle actions
+handle_action() {
+    local choice="$1"
+
+    case "$choice" in
+        *"Play/Pause"*)
+            handle_media_action "play_pause"
+            ;;
+        *"Previous Track"*)
+            handle_media_action "previous"
+            ;;
+        *"Next Track"*)
+            handle_media_action "next"
+            ;;
+        *"Add New Task"*)
+            new_task=$(echo "" | fzf --print-query --prompt="󰄀 New Task > " --height=3 --border --no-info | tail -n1)
+            if [ -n "$new_task" ]; then
+                echo "$new_task" >> "$TODO_FILE"
+                notify-send "󰄀" "Task added"
+            fi
+            ;;
+        *"Complete Task"*)
+            if [ -f "$TODO_FILE" ] && [ -s "$TODO_FILE" ]; then
+                completed=$(cat "$TODO_FILE" | fzf --prompt="󰄬 Complete > " --height=40% --border --ansi)
+                if [ -n "$completed" ]; then
+                    grep -Fxv "$completed" "$TODO_FILE" > "$TODO_FILE.tmp"
+                    mv "$TODO_FILE.tmp" "$TODO_FILE"
+                    notify-send "󰄬" "Completed!"
+                fi
+            fi
+            ;;
+        *"Clear All Notifications"*)
+            if command -v dunstctl &>/dev/null; then
+                dunstctl close-all
+                notify-send "󰂛" "Cleared"
+            fi
+            ;;
+        *"Open Calendar"*)
+            if command -v calcurse &>/dev/null; then
+                calcurse
+            else
+                notify-send "󰃭" "calcurse not installed"
+            fi
+            ;;
+
+        *"Close Dashboard"*)
+            exit 0
+            ;;
+    esac
+}
+
+# Main loop
+main() {
+    trap 'tput cnorm; exit' INT TERM
+
+    while true; do
+        choice=$(build_dashboard | fzf \
+            --prompt="󰒓 Dashboard > " \
+            --layout=default \
+            --height=100% \
+            --border=none \
+            --ansi \
+            --no-info \
+            --pointer="▶" \
+            --bind='esc:abort,ctrl-c:abort'
+            --color="info:#cba6f7,prompt:#89b4fa,pointer:#f38ba8") \
+
+        [ -z "$choice" ] && exit 0
+
+        handle_action "$choice"
+        sleep 0.1
+    done
+}
+
+main
