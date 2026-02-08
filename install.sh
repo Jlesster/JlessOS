@@ -384,7 +384,7 @@ copy_configs() {
 
     for config in "${jlessos_configs[@]}"; do
         local source="$dotfiles_dir/JlessOS/$config"
-        local target="$CONFIG_DIR/$config"
+        local target="$HOME/.config/"
 
         if [ -e "$source" ]; then
             if [ -e "$target" ]; then
