@@ -240,26 +240,74 @@ backup_configs() {
         "lazygit"
         "nvim"
         "Kvantum"
+        "scripts"
     )
 
     local backed_up=0
+    local skipped=0
 
+    # Create backup directory only if needed
+    local backup_needed=false
     for config in "${configs[@]}"; do
         if [ -e "$CONFIG_DIR/$config" ]; then
-            if [ ! -d "$BACKUP_DIR" ]; then
-                mkdir -p "$BACKUP_DIR"
-            fi
-            print_info "Backing up $config"
-            mv "$CONFIG_DIR/$config" "$BACKUP_DIR/"
-            ((backed_up++))
+            backup_needed=true
+            break
         fi
     done
 
+    if [ "$backup_needed" = false ]; then
+        print_info "No existing configs found to backup"
+        return 0
+    fi
+
+    # Create backup directory
+    if ! mkdir -p "$BACKUP_DIR"; then
+        print_error "Failed to create backup directory: $BACKUP_DIR"
+        return 1
+    fi
+
+    print_info "Backup directory: $BACKUP_DIR"
+    echo ""
+
+    # Backup each config
+    for config in "${configs[@]}"; do
+        local config_path="$CONFIG_DIR/$config"
+
+        if [ ! -e "$config_path" ]; then
+            continue
+        fi
+
+        # Check if it's a symlink
+        if [ -L "$config_path" ]; then
+            print_warning "$config is a symlink, removing instead of backing up"
+            if rm "$config_path"; then
+                ((skipped++))
+            else
+                print_error "Failed to remove symlink: $config_path"
+            fi
+            continue
+        fi
+
+        # Backup regular files/directories
+        print_info "Backing up $config"
+        if mv "$config_path" "$BACKUP_DIR/"; then
+            ((backed_up++))
+            print_success "$config backed up"
+        else
+            print_error "Failed to backup $config"
+        fi
+    done
+
+    echo ""
     if [ $backed_up -gt 0 ]; then
         print_success "Backed up $backed_up configs to $BACKUP_DIR"
-    else
-        print_info "No existing configs found to backup"
     fi
+
+    if [ $skipped -gt 0 ]; then
+        print_info "Removed $skipped symlinks"
+    fi
+
+    return 0
 }
 
 # Clone or update dotfiles
@@ -362,66 +410,132 @@ setup_material_theme() {
     fi
 }
 
+# Copy a single config directory
+copy_single_config() {
+    local source="$1"
+    local target="$2"
+    local name="$3"
+
+    # Check if source exists
+    if [ ! -e "$source" ]; then
+        print_warning "Source not found: $source"
+        return 1
+    fi
+
+    # Check if source is empty
+    if [ -d "$source" ] && [ -z "$(ls -A "$source")" ]; then
+        print_warning "$name source directory is empty"
+        return 1
+    fi
+
+    # Handle existing target
+    if [ -e "$target" ]; then
+        print_warning "$name already exists at $target"
+        if ! confirm "Overwrite $name?" "n"; then
+            print_info "Skipping $name"
+            return 0
+        fi
+        print_info "Removing old $name"
+        rm -rf "$target"
+    fi
+
+    # Perform the copy
+    print_info "Copying $name: $source -> $target"
+    if cp -rv "$source" "$target" > /dev/null 2>&1; then
+        print_success "$name copied successfully"
+        return 0
+    else
+        print_error "Failed to copy $name"
+        return 1
+    fi
+}
+
 # Copy configurations (CHANGED FROM SYMLINK)
 copy_configs() {
     print_step "Copying configuration files"
 
     local dotfiles_dir="${1:-$HOME/.dotfiles}"
+    local jlessos_dir="$dotfiles_dir/JlessOS/.config"  # CHANGED: points to .config subdir
 
-    # JlessOS configs to copy
-    local jlessos_configs=(
-        "hypr"
-        "waybar"
-        "wofi"
-        "kitty"
-        "fish"
-        "yazi"
-        "fastfetch"
-        "lazygit"
-        "Kvantum"
-        "scripts"
+    # Verify JlessOS directory exists
+    if [ ! -d "$jlessos_dir" ]; then
+        print_error "JlessOS config directory not found at $jlessos_dir"
+        return 1
+    fi
+
+    print_info "Source directory: $jlessos_dir"
+    print_info "Target directory: $CONFIG_DIR"
+    echo ""
+
+    # Configuration map: "config_name:source_subdir:target_name"
+    # Format: name:relative_path_in_.config:name_in_config_dir
+    # If target_name is omitted, uses config_name
+    # Now paths are relative to JlessOS/.config/
+    local configs=(
+        "hypr:hypr"
+        "waybar:waybar"
+        "wofi:wofi"
+        "kitty:kitty"
+        "fish:fish"
+        "yazi:yazi"
+        "fastfetch:fastfetch"
+        "lazygit:lazygit"
+        "kvantum:Kvantum:Kvantum"
+        "scripts:scripts"
     )
 
-    for config in "${jlessos_configs[@]}"; do
-        local source="$dotfiles_dir/JlessOS/$config"
-        local target="$CONFIG_DIR/$config"
+    local copied=0
+    local failed=0
+    local skipped=0
 
-        if [ -e "$source" ]; then
-            if [ -e "$target" ]; then
-                print_warning "$config already exists at $target"
-                if confirm "Overwrite $config?"; then
-                    rm -rf "$target"
-                else
-                    print_info "Skipping $config"
-                    continue
-                fi
-            fi
+    # Copy JlessOS configs
+    for config_entry in "${configs[@]}"; do
+        # Parse config entry
+        IFS=':' read -r name source_subdir target_name <<< "$config_entry"
 
-            print_info "Copying $config"
-            cp -r "$source" "$target"
+        # Use name as target if target_name not specified
+        target_name="${target_name:-$name}"
+
+        local source="$jlessos_dir/$source_subdir"
+        local target="$CONFIG_DIR/$target_name"
+
+        if copy_single_config "$source" "$target" "$name"; then
+            ((copied++))
         else
-            print_warning "Source not found: $source"
+            if [ -e "$target" ]; then
+                ((skipped++))
+            else
+                ((failed++))
+            fi
         fi
     done
 
-    # Neovim config
+    echo ""
+
+    # Copy Neovim config separately (different source repo)
     local nvim_source="$dotfiles_dir/nvimConf"
     local nvim_target="$CONFIG_DIR/nvim"
 
-    if [ -e "$nvim_source" ]; then
+    if copy_single_config "$nvim_source" "$nvim_target" "nvim"; then
+        ((copied++))
+    else
         if [ -e "$nvim_target" ]; then
-            if confirm "Overwrite nvim config?"; then
-                rm -rf "$nvim_target"
-                print_info "Copying nvim configuration"
-                cp -r "$nvim_source" "$nvim_target"
-            fi
+            ((skipped++))
         else
-            print_info "Copying nvim configuration"
-            cp -r "$nvim_source" "$nvim_target"
+            ((failed++))
         fi
     fi
 
-    print_success "Configuration files copied"
+    echo ""
+    print_info "Summary: $copied copied, $skipped skipped, $failed failed"
+
+    if [ $copied -gt 0 ]; then
+        print_success "Configuration files copied"
+        return 0
+    else
+        print_warning "No configurations were copied"
+        return 1
+    fi
 }
 
 # Set fish as default shell
@@ -523,7 +637,7 @@ main() {
 
     # Installation steps
     install_dependencies || print_warning "Dependency installation had issues"
-    backup_configs
+    # backup_configs
     clone_dotfiles "$HOME/.dotfiles"
     install_fonts
     setup_material_theme "$HOME/.dotfiles"
