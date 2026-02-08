@@ -204,8 +204,8 @@ install_arch_deps() {
     if confirm "Install Python theming dependencies?"; then
         for pkg in "${python_packages[@]}"; do
             execute "sudo pacman -S $pkg" "Installing $pkg"
-            execute "yay -S kde-material-you-color" "Installing Material You"
         done
+        execute "yay -S kde-material-you-color" "Installing Material You"
     fi
 
     # Install tree-sitter-cli (critical for nvim)
@@ -362,13 +362,13 @@ setup_material_theme() {
     fi
 }
 
-# Symlink configurations
-symlink_configs() {
-    print_step "Creating symbolic links"
+# Copy configurations (CHANGED FROM SYMLINK)
+copy_configs() {
+    print_step "Copying configuration files"
 
     local dotfiles_dir="${1:-$HOME/.dotfiles}"
 
-    # JlessOS configs to symlink
+    # JlessOS configs to copy
     local jlessos_configs=(
         "hypr"
         "waybar"
@@ -387,13 +387,18 @@ symlink_configs() {
         local target="$CONFIG_DIR/$config"
 
         if [ -e "$source" ]; then
-            if [ -e "$target" ] && [ ! -L "$target" ]; then
-                print_warning "$config already exists at $target (not a symlink)"
-                continue
+            if [ -e "$target" ]; then
+                print_warning "$config already exists at $target"
+                if confirm "Overwrite $config?"; then
+                    rm -rf "$target"
+                else
+                    print_info "Skipping $config"
+                    continue
+                fi
             fi
 
-            print_info "Linking $config"
-            ln -sf "$source" "$target"
+            print_info "Copying $config"
+            cp -r "$source" "$target"
         else
             print_warning "Source not found: $source"
         fi
@@ -404,17 +409,19 @@ symlink_configs() {
     local nvim_target="$CONFIG_DIR/nvim"
 
     if [ -e "$nvim_source" ]; then
-        print_info "Linking nvim configuration"
-        ln -sf "$nvim_source" "$nvim_target"
+        if [ -e "$nvim_target" ]; then
+            if confirm "Overwrite nvim config?"; then
+                rm -rf "$nvim_target"
+                print_info "Copying nvim configuration"
+                cp -r "$nvim_source" "$nvim_target"
+            fi
+        else
+            print_info "Copying nvim configuration"
+            cp -r "$nvim_source" "$nvim_target"
+        fi
     fi
 
-    # Material theme if it exists
-    if [ -d "$dotfiles_dir/JlessOS/colorscheming" ]; then
-        print_info "Linking Material You theming system"
-        ln -sf "$dotfiles_dir/JlessOS/colorscheming" "$CONFIG_DIR/material-theme"
-    fi
-
-    print_success "Configuration links created"
+    print_success "Configuration files copied"
 }
 
 # Set fish as default shell
@@ -520,7 +527,7 @@ main() {
     clone_dotfiles "$HOME/.dotfiles"
     install_fonts
     setup_material_theme "$HOME/.dotfiles"
-    symlink_configs "$HOME/.dotfiles"
+    copy_configs "$HOME/.dotfiles"  # CHANGED: was symlink_configs
     setup_fish
     setup_neovim
     setup_scripts
