@@ -66,19 +66,20 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Create temp directory
-mkdir -p "$TEMP_DIR"
-cd "$TEMP_DIR"
+mkdir -p "$INSTALL_DIR"
 
 echo ""
 echo -e "${BLUE}Downloading installer...${NC}"
 
 # Clone repository
-if git clone --depth 1 "$REPO_URL" .; then
+if git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
     echo -e "${GREEN}✓${NC} Repository cloned"
 else
     echo -e "${RED}✗${NC} Failed to clone repository"
     exit 1
 fi
+
+cd "$INSTALL_DIR"
 
 # Make install script executable
 chmod +x install.sh
