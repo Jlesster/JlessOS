@@ -510,7 +510,7 @@ copy_configs() {
 
     # Copy JlessOS configs
     for config_name in "${configs[@]}"; do
-        local source="$jlessos_dir/$config_name"
+        local source="$jlessos_dir/$config_name/./."
         local target="$CONFIG_DIR/$config_name"
 
         if copy_single_config "$source" "$target" "$config_name"; then
