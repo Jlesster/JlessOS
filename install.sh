@@ -197,7 +197,7 @@ install_arch_deps() {
     # Python packages for Material You theming
     print_info "Installing Python packages for theming system"
     local python_packages=(
-        pyhton-pillow
+        python-pillow
         python-opencv
     )
 
