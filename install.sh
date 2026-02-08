@@ -199,7 +199,7 @@ install_arch_deps() {
     local python_packages=(
         materialyoucolor
         Pillow
-        opencv-python
+        python-opencv
     )
 
     if confirm "Install Python theming dependencies?"; then
