@@ -29,9 +29,10 @@ try:
     from generate_nvim_theme import generate_neovim_theme, write_neovim_colorscheme
     from generate_kitty_theme import write_kitty_colors
     from generate_lazygit_theme import generate_lazygit_colors, write_lazygit_config, configure_git_diff_colors
+    from generate_starship_theme import generate_starship_colors, write_starship_config
     from generate_yazi_theme import generate_yazi_colors, write_yazi_theme
-    from generate_waybar_theme import generate_waybar_colors, write_waybar_theme
     from generate_fzf_theme import generate_fzf_colors, write_fzf_config
+    from generate_wofi_theme import generate_wofi_colors, write_wofi_theme
     from generate_btop_theme import generate_btop_colors, write_btop_theme
     from generate_fish_theme import generate_fish_colors, write_fish_theme, write_fish_prompt
 except ImportError as e:
@@ -48,6 +49,9 @@ from materialyoucolor.utils.math_utils import (sanitize_degrees_double, differen
 
 parser = argparse.ArgumentParser(description='Standalone Material You color scheme generator')
 parser.add_argument('--path', type=str, default=None, help='Generate colorscheme from image')
+parser.add_argument('--generate-wofi', action='store_true', default=False, help='Generate Wofi theme')
+parser.add_argument('--generate-starship', action='store_true', default=False, help='Generate Starship prompt theme')
+parser.add_argument('--starship-output', type=str, default=None, help='Custom Starship theme output path')
 parser.add_argument('--size', type=int, default=128, help='Bitmap image size for processing')
 parser.add_argument('--color', type=str, default=None, help='Generate colorscheme from hex color')
 parser.add_argument('--mode', type=str, choices=['dark', 'light'], default='dark', help='Dark or light mode')
@@ -59,8 +63,6 @@ parser.add_argument('--harmony', type=float, default=0.8, help='(0-1) Color hue 
 parser.add_argument('--harmonize_threshold', type=float, default=100, help='(0-180) Max threshold angle for hue shift')
 parser.add_argument('--term_fg_boost', type=float, default=0.35, help='Make terminal foreground more distinct')
 parser.add_argument('--blend_bg_fg', action='store_true', default=False, help='Shift terminal bg/fg towards accent')
-parser.add_argument('--generate-waybar', action='store_true', default=False, help='Generate Waybar theme')
-parser.add_argument('--waybar-output', type=str, default=None, help='Custom Waybar theme output path')
 parser.add_argument('--cache', type=str, default=None, help='File path to cache the generated color')
 parser.add_argument('--debug', action='store_true', default=False, help='Enable debug output')
 
@@ -91,6 +93,18 @@ argb_to_hex = lambda argb: "#{:02X}{:02X}{:02X}".format(*map(round, rgba_from_ar
 hex_to_argb = lambda hex_code: argb_from_rgb(int(hex_code[1:3], 16), int(hex_code[3:5], 16), int(hex_code[5:], 16))
 display_color = lambda rgba: "\x1B[38;2;{};{};{}m{}\x1B[0m".format(rgba[0], rgba[1], rgba[2], "\x1b[7m   \x1b[7m")
 
+def get_app_cfg(cfg: dict, app_name: str) -> tuple[bool, dict]:
+    apps = cfg.get("applications", {})
+    raw = apps.get(app_name)
+
+    if isinstance(raw, bool):
+        return raw, {}
+
+    if isinstance(raw, dict):
+        enabled = bool(raw.get("enabled", True))
+        return enabled, raw
+
+    return False, {}
 
 def calculate_optimal_size(width: int, height: int, bitmap_size: int) -> tuple:
     """Calculate optimal size for image processing"""
@@ -170,7 +184,7 @@ if args.path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         with open(cache_path, 'w') as file:
             file.write(argb_to_hex(argb))
-    
+
     # Also save to default cache location
     default_cache = THEME_STATE_DIR / 'current_color.txt'
     with open(default_cache, 'w') as f:
@@ -183,7 +197,7 @@ if args.path is not None:
 elif args.color is not None:
     argb = hex_to_argb(args.color)
     hct = Hct.from_int(argb)
-    
+
     # Save to cache
     default_cache = THEME_STATE_DIR / 'current_color.txt'
     with open(default_cache, 'w') as f:
@@ -309,20 +323,33 @@ if args.generate_all or args.generate_nvim:
     if args.debug:
         print(f'✓ Neovim theme written to: {nvim_path}')
 
-if args.generate_all or args.generate_waybar:
-    if term_colors:
-        if args.debug:
-            print('\n=== Generating Waybar theme ===')
-        waybar_colors = generate_waybar_colors(material_colors, term_colors, darkmode, transparent)
-        waybar_path = write_waybar_theme(waybar_colors, args.waybar_output, transparent, args.debug)
-        if args.debug:
-            print(f'✓ Waybar theme written to: {waybar_path}')
+if termscheme_path.exists():
+    with open(termscheme_path, 'r') as f:
+        loaded_colors = json.load(f)
+
+        wofi_enabled, wofi_cfg = get_app_cfg(loaded_colors, "wofi")
+        if (args.generate_all or args.generate_wofi) and wofi_enabled:
+            if term_colors:
+                if args.debug:
+                    print('\n=== Generating Wofi theme ===')
+                    print(f'Wofi config: {wofi_cfg}')
+
+                wofi_colors = generate_wofi_colors(
+                    material_colors,
+                    term_colors,
+                    darkmode,
+                    wofi_cfg
+                )
+                wofi_path = write_wofi_theme(wofi_colors, None, args.debug)
+
+                if args.debug:
+                    print(f'✓ Wofi theme written to: {wofi_path}')
 
 if args.generate_all or args.generate_kitty:
     if term_colors:
         if args.debug:
             print('\n=== Generating Kitty theme ===')
-        kitty_path = write_kitty_colors(term_colors, args.kitty_output, args.debug)
+        kitty_path = write_kitty_colors(term_colors, material_colors, args.kitty_output, args.debug)
         if args.debug:
             print(f'✓ Kitty theme written to: {kitty_path}')
 
@@ -362,6 +389,15 @@ if args.generate_all or args.generate_btop:
         btop_path = write_btop_theme(btop_colors, args.btop_output, args.debug)
         if args.debug:
             print(f'✓ Btop theme written to: {btop_path}')
+
+if args.generate_all or args.generate_starship:
+    if term_colors:
+        if args.debug:
+            print('\n=== Generating Starship theme ===')
+        starship_colors = generate_starship_colors(material_colors, term_colors, darkmode)
+        starship_path = write_starship_config(starship_colors, args.starship_output, args.debug)
+        if args.debug:
+            print(f'✓ Starship theme written to: {starship_path}')
 
 if args.generate_all or args.generate_fish:
     if term_colors:

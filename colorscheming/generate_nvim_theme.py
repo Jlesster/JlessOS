@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Neovim Theme Generator
-Generates Catppuccin-based colorscheme harmonized with Material You colors
+Neovim Theme Generator - Refactored Version
+All background transparency handled through transparent_groups at the end
 """
 
 import os
@@ -11,10 +11,57 @@ from materialyoucolor.hct import Hct
 from materialyoucolor.utils.color_utils import rgba_from_argb, argb_from_rgb
 
 
-def load_catppuccin_palette(path: str) -> dict:
-    """Load Catppuccin color palette from JSON file"""
-    with open(path, "r") as f:
-        return json.load(f)
+# Embedded Catppuccin Mocha palette as fallback
+CATPPUCCIN_MOCHA = {
+    "rosewater": "#f5e0dc",
+    "flamingo": "#f2cdcd",
+    "pink": "#f5c2e7",
+    "mauve": "#cba6f7",
+    "red": "#f38ba8",
+    "maroon": "#eba0ac",
+    "peach": "#fab387",
+    "yellow": "#f9e2af",
+    "green": "#a6e3a1",
+    "teal": "#94e2d5",
+    "sky": "#89dceb",
+    "sapphire": "#74c7ec",
+    "blue": "#89b4fa",
+    "lavender": "#b4befe",
+    "text": "#cdd6f4",
+    "subtext1": "#bac2de",
+    "subtext0": "#a6adc8",
+    "overlay2": "#9399b2",
+    "overlay1": "#7f849c",
+    "overlay0": "#6c7086",
+    "surface2": "#585b70",
+    "surface1": "#45475a",
+    "surface0": "#313244",
+    "base": "#1e1e2e",
+    "mantle": "#181825",
+    "crust": "#11111b"
+}
+
+
+def load_catppuccin_palette(path: str = None) -> dict:
+    """
+    Load Catppuccin color palette from JSON file or use embedded palette
+
+    Args:
+        path: Optional path to Colors.json file
+
+    Returns:
+        Dict of Catppuccin colors
+    """
+    if path and os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load Catppuccin palette from {path}: {e}")
+            print("Using embedded Catppuccin Mocha palette")
+            return CATPPUCCIN_MOCHA
+    else:
+        return CATPPUCCIN_MOCHA
 
 
 def hex_to_argb(hex_code: str) -> int:
@@ -92,7 +139,7 @@ def generate_neovim_theme(
         material_colors: Dict of Material You colors
         term_colors: Dict of terminal colors
         transparent: Whether to use transparent background
-        catppuccin_path: Path to Catppuccin colors JSON file
+        catppuccin_path: Optional path to Catppuccin colors JSON file
         debug: Enable debug output
 
     Returns:
@@ -100,24 +147,19 @@ def generate_neovim_theme(
     """
     neovim_colors = {}
 
-    # Load real Catppuccin Mocha palette
-    if catppuccin_path is None:
-        catppuccin_path = os.path.expanduser(
-            "~/.config/quickshell/ii/scripts/colors/Colors.json"
-        )
-
+    # Load Catppuccin palette (embedded or from file)
     cat = load_catppuccin_palette(catppuccin_path)
     accent_argb = hex_to_argb(material_colors["primary_paletteKeyColor"])
 
     # Harmonization parameters - INCREASED for more vibrant, purple-harmonized colors
     BG_HARMONY = 0.88
     UI_HARMONY = 0.15
-    SYNTAX_HARMONY = 0.85  # Increased from 0.75 to pull colors more toward purple
+    SYNTAX_HARMONY = 0.85
     TEXT_HARMONY = 0.46
 
     BG_THRESH = 5.0
     UI_THRESH = 10.0
-    SYNTAX_THRESH = 60.0  # Increased from 40.55 to allow more hue rotation
+    SYNTAX_THRESH = 60.0
     TEXT_THRESH = 8.0
 
     # Background / surfaces (keep Mocha depth)
@@ -145,52 +187,41 @@ def generate_neovim_theme(
 
     # Syntax accents - VIBRANT, highly saturated
     syntax_colors = {
-        "rosewater": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),  # Increased from 75
-        "flamingo": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),  # Increased from 76
-        "pink": (SYNTAX_HARMONY, SYNTAX_THRESH, 92),  # Increased from 75
-        "mauve": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 72
-        "red": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),  # Increased from 65
-        "maroon": (SYNTAX_HARMONY, SYNTAX_THRESH, 88),  # Increased from 60
-        "peach": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),  # Increased from 70
-        "yellow": (SYNTAX_HARMONY, SYNTAX_THRESH, 92),  # Increased from 75
-        "green": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 70
-        "teal": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 72
-        "sky": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 68
-        "sapphire": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 80
-        "blue": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 78
-        "lavender": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),  # Increased from 75
+        "rosewater": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),
+        "flamingo": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),
+        "pink": (SYNTAX_HARMONY, SYNTAX_THRESH, 92),
+        "mauve": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "red": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),
+        "maroon": (SYNTAX_HARMONY, SYNTAX_THRESH, 88),
+        "peach": (SYNTAX_HARMONY, SYNTAX_THRESH, 90),
+        "yellow": (SYNTAX_HARMONY, SYNTAX_THRESH, 92),
+        "green": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "teal": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "sky": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "sapphire": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "blue": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
+        "lavender": (SYNTAX_HARMONY, SYNTAX_THRESH, 95),
     }
 
     for k, (harmony, thresh, target_chroma) in syntax_colors.items():
         raw = harmonize_hex(cat[k], accent_argb, harmony, thresh)
-        # FORCE the chroma to target value instead of just capping
         raw_argb = hex_to_argb(raw)
         raw_hct = Hct.from_int(raw_argb)
-        # Set chroma to exactly the target value for maximum saturation
         neovim_colors[k] = argb_to_hex(
             Hct.from_hct(raw_hct.hue, target_chroma, raw_hct.tone).to_int()
         )
 
-    # Minimal syntax brightness lift (colors are already at optimal tones)
-    SYNTAX_TONE_LIFT = 0.0  # Disabled - we're setting optimal tones manually
-    for k in syntax_colors.keys():
-        if SYNTAX_TONE_LIFT > 0:
-            neovim_colors[k] = argb_to_hex(
-                lift_tone(hex_to_argb(neovim_colors[k]), SYNTAX_TONE_LIFT)
-            )
-
     # Force specific tones for better contrast and vibrancy
-    # Using optimal tone range (65-80) for maximum perceived saturation
     TONE_MAP = {
-        "mauve": 68,  # Increased from 65
-        "blue": 72,  # Increased from 71
-        "green": 70,  # Decreased from 78 for more vibrancy
-        "teal": 72,  # Decreased from 80
-        "yellow": 80,  # Lowered for much more vibrant yellow
-        "pink": 70,  # Decreased from 78
+        "mauve": 68,
+        "blue": 72,
+        "green": 70,
+        "teal": 72,
+        "yellow": 80,
+        "pink": 70,
         "sapphire": 73,
-        "red": 65,  # Added
-        "peach": 72,  # Added
+        "red": 65,
+        "peach": 72,
     }
 
     for k, tone in TONE_MAP.items():
@@ -224,23 +255,20 @@ def write_neovim_colorscheme(
             ).to_int()
         )
 
-    def force_vivid_dark(argb: int, chroma: float, tone: float) -> str:
-        hct = Hct.from_int(argb)
-        return argb_to_hex(Hct.from_hct(hct.hue, min(chroma, 95), tone).to_int())
-
     rainbow_colors = {
         "red": boost_for_rainbow(hex_to_argb(neovim_colors["red"]), 1.3, 68),
-        "orange": boost_for_rainbow(hex_to_argb(neovim_colors["peach"]), 1.4, 72),
-        "yellow": boost_for_rainbow(hex_to_argb(neovim_colors["yellow"]), 1.6, 82),
-        "green": boost_for_rainbow(hex_to_argb(neovim_colors["green"]), 1.3, 74),
-        "cyan": boost_for_rainbow(hex_to_argb(neovim_colors["teal"]), 1.4, 76),
-        "blue": force_vivid_dark(hex_to_argb(neovim_colors["sky"]), chroma=70, tone=74),
-        "violet": force_vivid_dark(
-            hex_to_argb(neovim_colors["mauve"]), chroma=95, tone=66
-        ),
+        "orange": boost_for_rainbow(hex_to_argb(neovim_colors["peach"]), 1.25, 72),
+        "yellow": boost_for_rainbow(hex_to_argb(neovim_colors["yellow"]), 1.25, 75),
+        "green": boost_for_rainbow(hex_to_argb(neovim_colors["green"]), 1.3, 70),
+        "cyan": boost_for_rainbow(hex_to_argb(neovim_colors["teal"]), 1.3, 70),
+        "blue": boost_for_rainbow(hex_to_argb(neovim_colors["blue"]), 1.3, 72),
+        "violet": boost_for_rainbow(hex_to_argb(neovim_colors["mauve"]), 1.4, 68),
+        "purple": boost_for_rainbow(hex_to_argb(neovim_colors["mauve"]), 1.4, 68),
+        "pink": boost_for_rainbow(hex_to_argb(neovim_colors["pink"]), 1.3, 70),
     }
 
-    nvim_theme_content = f'''-- Auto-generated Neovim colorscheme
+    nvim_theme_content = f'''
+-- Auto-generated Neovim colorscheme
 -- Vibrant LSP-semantic based theme with Material You + Catppuccin Mocha
 
 vim.cmd("hi clear")
@@ -251,40 +279,40 @@ vim.g.colors_name = "material_purple_mocha"
 
 local colors = {{
   -- Base colors
-  base = "{neovim_colors["base"]}",
-  mantle = "{neovim_colors["mantle"]}",
-  crust = "{neovim_colors["crust"]}",
+  base = "{neovim_colors['base']}",
+  mantle = "{neovim_colors['mantle']}",
+  crust = "{neovim_colors['crust']}",
 
   -- Surface colors
-  surface0 = "{neovim_colors["surface0"]}",
-  surface1 = "{neovim_colors["surface1"]}",
-  surface2 = "{neovim_colors["surface2"]}",
+  surface0 = "{neovim_colors['surface0']}",
+  surface1 = "{neovim_colors['surface1']}",
+  surface2 = "{neovim_colors['surface2']}",
 
   -- Overlay colors
-  overlay0 = "{neovim_colors["overlay0"]}",
-  overlay1 = "{neovim_colors["overlay1"]}",
-  overlay2 = "{neovim_colors["overlay2"]}",
+  overlay0 = "{neovim_colors['overlay0']}",
+  overlay1 = "{neovim_colors['overlay1']}",
+  overlay2 = "{neovim_colors['overlay2']}",
 
   -- Text colors
-  text = "{neovim_colors["text"]}",
-  subtext1 = "{neovim_colors["subtext1"]}",
-  subtext0 = "{neovim_colors["subtext0"]}",
+  text = "{neovim_colors['text']}",
+  subtext1 = "{neovim_colors['subtext1']}",
+  subtext0 = "{neovim_colors['subtext0']}",
 
   -- Accent colors (VIBRANT)
-  rosewater = "{neovim_colors["rosewater"]}",
-  flamingo = "{neovim_colors["flamingo"]}",
-  pink = "{neovim_colors["pink"]}",
-  mauve = "{neovim_colors["mauve"]}",
-  red = "{neovim_colors["red"]}",
-  maroon = "{neovim_colors["maroon"]}",
-  peach = "{neovim_colors["peach"]}",
-  yellow = "{neovim_colors["yellow"]}",
-  green = "{neovim_colors["green"]}",
-  teal = "{neovim_colors["teal"]}",
-  sky = "{neovim_colors["sky"]}",
-  sapphire = "{neovim_colors["sapphire"]}",
-  blue = "{neovim_colors["blue"]}",
-  lavender = "{neovim_colors["lavender"]}",
+  rosewater = "{neovim_colors['rosewater']}",
+  flamingo = "{neovim_colors['flamingo']}",
+  pink = "{neovim_colors['pink']}",
+  mauve = "{neovim_colors['mauve']}",
+  red = "{neovim_colors['red']}",
+  maroon = "{neovim_colors['maroon']}",
+  peach = "{neovim_colors['peach']}",
+  yellow = "{neovim_colors['yellow']}",
+  green = "{neovim_colors['green']}",
+  teal = "{neovim_colors['teal']}",
+  sky = "{neovim_colors['sky']}",
+  sapphire = "{neovim_colors['sapphire']}",
+  blue = "{neovim_colors['blue']}",
+  lavender = "{neovim_colors['lavender']}",
 }}
 
 local function hi(group, opts)
@@ -568,7 +596,9 @@ local function setup_highlights()
     -- ============================================================================
     -- PLUGIN: INDENT-BLANKLINE
     -- ============================================================================
-    hi("SnacksIndent", {{ fg = colors.overlay0 }})
+    hi("IblIndent", {{ fg = colors.overlay0 }})
+    hi("IblScope", {{ fg = colors.overlay0 }})
+
     -- ============================================================================
     -- PLUGIN: WHICH-KEY
     -- ============================================================================
@@ -603,13 +633,13 @@ local function setup_highlights()
     -- ============================================================================
     -- PLUGIN: RAINBOW DELIMITERS
     -- ============================================================================
-    hi("RainbowDelimiterRed",    {{ fg = "{rainbow_colors["red"]}" }})
-    hi("RainbowDelimiterOrange", {{ fg = "{rainbow_colors["orange"]}" }})
-    hi("RainbowDelimiterYellow", {{ fg = "{rainbow_colors["yellow"]}" }})
-    hi("RainbowDelimiterGreen",  {{ fg = "{rainbow_colors["green"]}" }})
-    hi("RainbowDelimiterCyan",   {{ fg = "{rainbow_colors["cyan"]}" }})
-    hi("RainbowDelimiterBlue",   {{ fg = "{rainbow_colors["blue"]}" }})
-    hi("RainbowDelimiterViolet", {{ fg = "{rainbow_colors["violet"]}" }})
+    hi("RainbowDelimiterRed",    {{ fg = "{rainbow_colors['red']}" }})
+    hi("RainbowDelimiterOrange", {{ fg = "{rainbow_colors['orange']}" }})
+    hi("RainbowDelimiterYellow", {{ fg = "{rainbow_colors['yellow']}" }})
+    hi("RainbowDelimiterGreen",  {{ fg = "{rainbow_colors['green']}" }})
+    hi("RainbowDelimiterCyan",   {{ fg = "{rainbow_colors['cyan']}" }})
+    hi("RainbowDelimiterBlue",   {{ fg = "{rainbow_colors['blue']}" }})
+    hi("RainbowDelimiterViolet", {{ fg = "{rainbow_colors['violet']}" }})
 
     -- ============================================================================
     -- PLUGIN: RENDER-MARKDOWN

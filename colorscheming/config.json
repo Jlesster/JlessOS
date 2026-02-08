@@ -1,0 +1,30 @@
+{
+  "wallpaper": {
+    "current": "/home/jless/Pictures/Wallpapers/purple.png",
+    "backend": "hyprpaper"
+  },
+  "theming": {
+    "mode": "dark",
+    "scheme": "vibrant",
+    "smart_scheme": true,
+    "harmony": 0.8,
+    "transparency": "opaque"
+  },
+  "applications": {
+    "kitty": true,
+    "nvim": true,
+    "lazygit": true,
+    "yazi": true,
+    "fzf": true,
+    "btop": true,
+    "fish": true,
+    "wofi": {
+      "enabled": true,
+      "background_alpha_dark": 0.60,
+      "background_alpha_light": 0.62,
+      "input_alpha": 0.46
+    },
+    "waybar": true,
+    "hyprland": true
+  }
+}

@@ -158,39 +158,51 @@ def write_fish_theme(fish_colors: dict, output_path: str = None, debug: bool = F
     theme_content = f'''# Auto-generated Fish shell colors (Material You theme)
 # This file is sourced automatically by fish
 
+# IMPORTANT: Use -U (universal) to override any existing universal variables
+# This ensures the theme takes effect even if colors were previously set with -U
+
 # Syntax highlighting colors
-set -g fish_color_normal {fish_rgb['normal']}
-set -g fish_color_command {fish_rgb['command']}
-set -g fish_color_keyword {fish_rgb['keyword']}
-set -g fish_color_quote {fish_rgb['quote']}
-set -g fish_color_redirection {fish_rgb['redirection']}
-set -g fish_color_end {fish_rgb['end']}
-set -g fish_color_error {fish_rgb['error']}
-set -g fish_color_param {fish_rgb['param']}
-set -g fish_color_comment {fish_rgb['comment']}
-set -g fish_color_selection --background={fish_rgb['selection_bg']}
-set -g fish_color_operator {fish_rgb['operator']}
-set -g fish_color_escape {fish_rgb['escape']}
-set -g fish_color_autosuggestion {fish_rgb['autosuggestion']}
-set -g fish_color_valid_path {fish_rgb['valid_path']} --underline
-set -g fish_color_search_match --background={fish_rgb['search_match']}
+set -U fish_color_normal {fish_rgb['normal']}
+set -U fish_color_command {fish_rgb['command']}
+set -U fish_color_keyword {fish_rgb['keyword']}
+set -U fish_color_quote {fish_rgb['quote']}
+set -U fish_color_redirection {fish_rgb['redirection']}
+set -U fish_color_end {fish_rgb['end']}
+set -U fish_color_error {fish_rgb['error']}
+set -U fish_color_param {fish_rgb['param']}
+set -U fish_color_comment {fish_rgb['comment']}
+set -U fish_color_selection --background={fish_rgb['selection_bg']}
+set -U fish_color_operator {fish_rgb['operator']}
+set -U fish_color_escape {fish_rgb['escape']}
+set -U fish_color_autosuggestion {fish_rgb['autosuggestion']}
+set -U fish_color_valid_path {fish_rgb['valid_path']} --underline
+set -U fish_color_search_match --background={fish_rgb['search_match']}
 
 # Pager (completion menu) colors
-set -g fish_pager_color_prefix {fish_rgb['pager_prefix']} --bold
-set -g fish_pager_color_completion {fish_rgb['pager_completion']}
-set -g fish_pager_color_description {fish_rgb['pager_description']}
-set -g fish_pager_color_progress {fish_rgb['pager_progress']}
-set -g fish_pager_color_selected_background --background={fish_rgb['pager_selected_bg']}
+set -U fish_pager_color_prefix {fish_rgb['pager_prefix']} --bold
+set -U fish_pager_color_completion {fish_rgb['pager_completion']}
+set -U fish_pager_color_description {fish_rgb['pager_description']}
+set -U fish_pager_color_progress {fish_rgb['pager_progress']}
+set -U fish_pager_color_selected_background --background={fish_rgb['pager_selected_bg']}
 
 # Additional useful colors
-set -g fish_color_cancel {fish_rgb['error']}
-set -g fish_color_cwd {fish_rgb['command']}
-set -g fish_color_cwd_root {fish_rgb['error']}
-set -g fish_color_history_current {fish_rgb['search_match']} --bold
-set -g fish_color_host {fish_rgb['quote']}
-set -g fish_color_host_remote {fish_rgb['quote']}
-set -g fish_color_match {fish_rgb['search_match']}
-set -g fish_color_user {fish_rgb['command']}
+set -U fish_color_cancel {fish_rgb['error']}
+set -U fish_color_cwd {fish_rgb['command']}
+set -U fish_color_cwd_root {fish_rgb['error']}
+set -U fish_color_history_current {fish_rgb['search_match']} --bold
+set -U fish_color_host {fish_rgb['quote']}
+set -U fish_color_host_remote {fish_rgb['quote']}
+set -U fish_color_match {fish_rgb['search_match']}
+set -U fish_color_user {fish_rgb['command']}
+
+# Export global variables for custom prompts to use
+# These match your current prompt's color scheme
+set -U material_prompt_bracket {fish_rgb['keyword']}
+set -U material_prompt_username {fish_rgb['command']}
+set -U material_prompt_hostname {fish_rgb['quote']}
+set -U material_prompt_path {fish_rgb['redirection']}
+set -U material_prompt_git {fish_rgb['quote']}
+set -U material_prompt_arrow {fish_rgb['keyword']}
 '''
     
     with open(output_path, 'w') as f:
@@ -199,7 +211,7 @@ set -g fish_color_user {fish_rgb['command']}
     if debug:
         print(f"\nFish shell theme written to: {output_path}")
         print("\nThe colors will be applied automatically when you start a new fish session.")
-        print("To apply immediately, run:")
+        print("To apply immediately in current session, run:")
         print(f"  source {output_path}")
     
     return output_path
@@ -207,7 +219,10 @@ set -g fish_color_user {fish_rgb['command']}
 
 def write_fish_prompt(material_colors: dict, term_colors: dict, output_path: str = None, debug: bool = False) -> str:
     """
-    Write a simple custom Fish prompt (optional)
+    Write a custom Fish prompt using dynamic Material You color variables
+    
+    This prompt uses the $material_prompt_* variables set by write_fish_theme(),
+    so colors update automatically when you change themes.
 
     Args:
         material_colors: Dict of Material You colors
@@ -223,52 +238,47 @@ def write_fish_prompt(material_colors: dict, term_colors: dict, output_path: str
         fish_functions_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(fish_functions_dir / 'fish_prompt.fish')
     
-    # Get primary color for prompt
-    primary_hct = Hct.from_int(hex_to_argb(material_colors['primary_paletteKeyColor']))
-    base_hue = primary_hct.hue
-    
-    prompt_color = hex_to_rgb(argb_to_hex(
-        Hct.from_hct(base_hue, min(primary_hct.chroma * 1.4, 80), 75).to_int()
-    ))
-    
-    error_color = hex_to_rgb(argb_to_hex(
-        Hct.from_hct((base_hue + 200) % 360, min(primary_hct.chroma * 1.4, 80), 72).to_int()
-    ))
-    
-    dir_color = hex_to_rgb(term_colors['term4'])
-    git_color = hex_to_rgb(term_colors['term5'])
-    
-    prompt_content = f'''# Auto-generated Fish prompt (Material You theme)
+    # Use dynamic color variables instead of hardcoded colors
+    # These variables are set by write_fish_theme() and update automatically
+    prompt_content = '''# Auto-generated Fish prompt (Material You theme)
+# Uses dynamic color variables that update when theme changes
+
 function fish_prompt
     # Save last status
     set -l last_status $status
     
-    # Show username@hostname in SSH sessions
-    if set -q SSH_CONNECTION
-        set_color {prompt_color}
-        echo -n (whoami)@(prompt_hostname)' '
-    end
+    # Top line with username, hostname, and path
+    set_color $material_prompt_bracket
+    echo -n "┌─("
     
-    # Current directory
-    set_color {dir_color}
+    set_color $material_prompt_username
+    echo -n (whoami)
+    
+    set_color $material_prompt_hostname
+    echo -n "@" (prompt_hostname)
+    
+    set_color $material_prompt_bracket
+    echo -n ")─["
+    
+    set_color $material_prompt_path
     echo -n (prompt_pwd)
     
-    # Git info (if in a git repo)
+    set_color $material_prompt_bracket
+    echo -n "]"
+    
+    # Git branch (if exists)
     if command -q git
-        set -l git_branch (git branch 2>/dev/null | sed -n '/\\* /s///p')
-        if test -n "$git_branch"
-            set_color {git_color}
-            echo -n " ($git_branch)"
+        set -l branch (git symbolic-ref --short HEAD 2>/dev/null)
+        if test -n "$branch"
+            set_color $material_prompt_git
+            echo -n "   $branch"
         end
     end
     
-    # Prompt symbol (changes color on error)
-    if test $last_status -eq 0
-        set_color {prompt_color}
-    else
-        set_color {error_color}
-    end
-    echo -n ' ❯ '
+    # Bottom line with arrow
+    set_color $material_prompt_bracket
+    echo
+    echo -n "└─➤ "
     
     set_color normal
 end
@@ -279,7 +289,7 @@ end
     
     if debug:
         print(f"\nFish prompt written to: {output_path}")
-        print("The prompt will be applied automatically in new fish sessions.")
+        print("The prompt uses $material_prompt_* variables and will update automatically with theme changes.")
     
     return output_path
 

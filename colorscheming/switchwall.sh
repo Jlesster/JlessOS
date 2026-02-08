@@ -42,6 +42,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
         "lazygit": true,
         "yazi": true,
         "fzf": true,
+	"wofi": true,
         "btop": true,
         "fish": true,
         "hyprland": true
@@ -128,13 +129,6 @@ else
     TRANSPARENCY="opaque"
 fi
 
-# Reload waybar if running
-if command -v waybar >/dev/null 2>&1 && pgrep -x waybar >/dev/null; then
-    killall waybar
-    waybar &
-    echo "  ✓ Waybar reloaded"
-fi
-
 # Validate input
 if [ -z "$IMAGE_PATH" ] && [ -z "$COLOR_HEX" ]; then
     echo "Error: Must provide either --image or --color"
@@ -151,14 +145,14 @@ if [ -n "$IMAGE_PATH" ]; then
 
     # Expand path
     IMAGE_PATH=$(realpath "$IMAGE_PATH")
-    
+
     # Save wallpaper path
     if command -v jq >/dev/null 2>&1; then
         tmp=$(mktemp)
         jq --arg path "$IMAGE_PATH" '.wallpaper.current = $path' "$CONFIG_FILE" > "$tmp"
         mv "$tmp" "$CONFIG_FILE"
     fi
-    
+
     # Set wallpaper based on backend
     case "$WALLPAPER_BACKEND" in
         hyprpaper)
@@ -168,14 +162,18 @@ if [ -n "$IMAGE_PATH" ]; then
                 if [ -f "$HYPRPAPER_CONF" ]; then
                     # Get current monitor
                     MONITOR=$(hyprctl monitors -j | jq -r '.[0].name')
-                    
+
                     # Kill existing hyprpaper
                     killall hyprpaper 2>/dev/null || true
-                    
-                    # Update config
+
+                    # Update config with new hyprpaper syntax
                     cat > "$HYPRPAPER_CONF" << EOF
-preload = $IMAGE_PATH
-wallpaper = $MONITOR,$IMAGE_PATH
+wallpaper {
+    monitor = $MONITOR
+    path = $IMAGE_PATH
+    fit_mode = cover
+}
+
 splash = false
 EOF
                     # Start hyprpaper
@@ -198,14 +196,14 @@ EOF
             echo "Unknown wallpaper backend: $WALLPAPER_BACKEND"
             ;;
     esac
-    
+
     echo "Wallpaper set to: $IMAGE_PATH"
 fi
 
 # Generate color scheme
 echo "Generating Material You color scheme..."
 
-GENERATOR_SCRIPT="$SCRIPT_DIR/generate_material_theme.py"
+GENERATOR_SCRIPT="$THEME_DIR/generate_material_theme.py"
 if [ ! -f "$GENERATOR_SCRIPT" ]; then
     echo "Error: Generator script not found: $GENERATOR_SCRIPT"
     exit 1
@@ -229,17 +227,19 @@ fi
 if command -v jq >/dev/null 2>&1; then
     ENABLE_KITTY=$(jq -r '.applications.kitty // true' "$CONFIG_FILE")
     ENABLE_NVIM=$(jq -r '.applications.nvim // true' "$CONFIG_FILE")
-    ENABLE_WAYBAR=$(jq -r '.applications.waybar // true' "$CONFIG_FILE")
     ENABLE_LAZYGIT=$(jq -r '.applications.lazygit // true' "$CONFIG_FILE")
+    ENABLE_STARSHIP=$(jq -r '.applications.starship // true' "$CONFIG_FILE")
+    ENABLE_WOFI=$(jq -r '.applications.wofi // true' "$CONFIG_FILE")
     ENABLE_YAZI=$(jq -r '.applications.yazi // true' "$CONFIG_FILE")
     ENABLE_FZF=$(jq -r '.applications.fzf // true' "$CONFIG_FILE")
     ENABLE_BTOP=$(jq -r '.applications.btop // true' "$CONFIG_FILE")
     ENABLE_FISH=$(jq -r '.applications.fish // true' "$CONFIG_FILE")
-    
+
     [ "$ENABLE_KITTY" = "true" ] && GEN_CMD="$GEN_CMD --generate-kitty"
     [ "$ENABLE_NVIM" = "true" ] && GEN_CMD="$GEN_CMD --generate-nvim"
     [ "$ENABLE_LAZYGIT" = "true" ] && GEN_CMD="$GEN_CMD --generate-lazygit"
-    [ "$ENABLE_WAYBAR" = "true" ] && GEN_CMD="$GEN_CMD --generate-waybar"
+    [ "$ENABLE_STARSHIP" = "true" ] && GEN_CMD="$GEN_CMD --generate-starship --starship-output ~/.config/starship.toml"
+    [ "$ENABLE_WOFI" = "true" ] && GEN_CMD="$GEN_CMD --generate-wofi"
     [ "$ENABLE_YAZI" = "true" ] && GEN_CMD="$GEN_CMD --generate-yazi"
     [ "$ENABLE_FZF" = "true" ] && GEN_CMD="$GEN_CMD --generate-fzf"
     [ "$ENABLE_BTOP" = "true" ] && GEN_CMD="$GEN_CMD --generate-btop"
@@ -261,22 +261,72 @@ else
     exit 1
 fi
 
+# Generate Waybar theme if enabled
+if command -v jq >/dev/null 2>&1; then
+    ENABLE_WAYBAR=$(jq -r '.applications.waybar // true' "$CONFIG_FILE")
+    if [ "$ENABLE_WAYBAR" = "true" ]; then
+        echo "Generating Waybar theme..."
+        WAYBAR_GENERATOR="$THEME_DIR/generate_waybar_theme.py"
+        if [ -f "$WAYBAR_GENERATOR" ]; then
+            python3 "$WAYBAR_GENERATOR" --colors-file "$STATE_DIR/colors.json" --debug
+            if [ $? -eq 0 ]; then
+                echo "  ✓ Waybar theme generated"
+            else
+                echo "  ✗ Failed to generate Waybar theme"
+            fi
+        else
+            echo "  ⚠ Waybar generator not found: $WAYBAR_GENERATOR"
+        fi
+    fi
+fi
+
 # Apply themes to running terminals (if applicable)
 if [ "$APPLY_NOW" = true ]; then
     echo "Applying themes to running applications..."
-    
+
     # Reload kitty if running
     if command -v kitty >/dev/null 2>&1 && pgrep -x kitty >/dev/null; then
         killall -SIGUSR1 kitty 2>/dev/null || true
         echo "  ✓ Kitty reloaded"
     fi
-    
-    # Reload fish if it's the current shell
-    if [ -n "$FISH_VERSION" ]; then
-        source "$XDG_CONFIG_HOME/fish/conf.d/material_you_colors.fish" 2>/dev/null || true
-        echo "  ✓ Fish colors reloaded"
+
+    # Apply Fish theme (works from any shell)
+    if command -v fish >/dev/null 2>&1; then
+        FISH_APPLY_SCRIPT="$THEME_DIR/apply_fish_colors.sh"
+        if [ -f "$FISH_APPLY_SCRIPT" ]; then
+            bash "$FISH_APPLY_SCRIPT"
+        else
+            # Fallback: basic reload for current shell
+            if [ -n "$FISH_VERSION" ]; then
+                source "$XDG_CONFIG_HOME/fish/conf.d/material_you_colors.fish" 2>/dev/null || true
+                echo "  ✓ Fish colors reloaded"
+            fi
+        fi
     fi
-    
+
+    # Restart Waybar if available
+    if command -v waybar >/dev/null 2>&1; then
+        echo "  Restarting Waybar..."
+
+        # Kill if running
+        if pgrep -x waybar >/dev/null; then
+            killall waybar
+            sleep 0.5
+        fi
+
+        # Start Waybar
+        nohup waybar > /tmp/waybar.log 2>&1 &
+        sleep 1.5
+
+        # Verify it started
+        if pgrep -x waybar >/dev/null; then
+            echo "  ✓ Waybar reloaded"
+        else
+            echo "  ✗ Waybar failed to start"
+            echo "  Check log: tail /tmp/waybar.log"
+        fi
+    fi
+
     # Update Hyprland colors if running
     if command -v hyprctl >/dev/null 2>&1 && [ -f "$STATE_DIR/colors.json" ]; then
         PRIMARY=$(jq -r '.material.primary' "$STATE_DIR/colors.json")
