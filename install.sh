@@ -416,9 +416,18 @@ copy_single_config() {
     local target="$2"
     local name="$3"
 
+    # DEBUG: Show what we're trying to copy
+    print_info "[DEBUG] Attempting to copy $name"
+    print_info "[DEBUG]   Source: $source"
+    print_info "[DEBUG]   Target: $target"
+    print_info "[DEBUG]   Source exists: $([ -e "$source" ] && echo "YES" || echo "NO")"
+    if [ -d "$source" ]; then
+        print_info "[DEBUG]   Source is directory with $(ls -A "$source" | wc -l) items"
+    fi
+
     # Check if source exists
     if [ ! -e "$source" ]; then
-        print_warning "Source not found: $source"
+        print_error "Source not found: $source"
         return 1
     fi
 
@@ -440,9 +449,10 @@ copy_single_config() {
     fi
 
     # Perform the copy
-    print_info "Copying $name: $source -> $target"
-    if cp -rv "$source" "$target" > /dev/null 2>&1; then
+    print_info "Copying $name..."
+    if cp -r "$source" "$target"; then
         print_success "$name copied successfully"
+        print_info "[DEBUG] Copied $(find "$target" -type f | wc -l) files"
         return 0
     else
         print_error "Failed to copy $name"
@@ -450,16 +460,24 @@ copy_single_config() {
     fi
 }
 
-# Copy configurations (CHANGED FROM SYMLINK)
+# Copy configurations
 copy_configs() {
     print_step "Copying configuration files"
 
     local dotfiles_dir="${1:-$HOME/.dotfiles}"
-    local jlessos_dir="$dotfiles_dir/JlessOS/.config"  # CHANGED: points to .config subdir
 
-    # Verify JlessOS directory exists
-    if [ ! -d "$jlessos_dir" ]; then
-        print_error "JlessOS config directory not found at $jlessos_dir"
+    # First, let's check what structure we have
+    print_info "[DEBUG] Checking repository structure..."
+    if [ -d "$dotfiles_dir/JlessOS/.config" ]; then
+        print_info "[DEBUG] Found JlessOS/.config directory"
+        local jlessos_dir="$dotfiles_dir/JlessOS/.config"
+    elif [ -d "$dotfiles_dir/JlessOS" ]; then
+        print_info "[DEBUG] JlessOS exists but no .config subdirectory"
+        print_info "[DEBUG] Contents of JlessOS:"
+        ls -la "$dotfiles_dir/JlessOS/" | head -20
+        local jlessos_dir="$dotfiles_dir/JlessOS"
+    else
+        print_error "JlessOS directory not found at $dotfiles_dir/JlessOS"
         return 1
     fi
 
@@ -467,21 +485,18 @@ copy_configs() {
     print_info "Target directory: $CONFIG_DIR"
     echo ""
 
-    # Configuration map: "config_name:source_subdir:target_name"
-    # Format: name:relative_path_in_.config:name_in_config_dir
-    # If target_name is omitted, uses config_name
-    # Now paths are relative to JlessOS/.config/
+    # Configuration entries - now just simple names since we'll construct paths
     local configs=(
-        "hypr:hypr"
-        "waybar:waybar"
-        "wofi:wofi"
-        "kitty:kitty"
-        "fish:fish"
-        "yazi:yazi"
-        "fastfetch:fastfetch"
-        "lazygit:lazygit"
-        "kvantum:Kvantum:Kvantum"
-        "scripts:scripts"
+        "hypr"
+        "waybar"
+        "wofi"
+        "kitty"
+        "fish"
+        "yazi"
+        "fastfetch"
+        "lazygit"
+        "Kvantum"
+        "scripts"
     )
 
     local copied=0
@@ -489,17 +504,11 @@ copy_configs() {
     local skipped=0
 
     # Copy JlessOS configs
-    for config_entry in "${configs[@]}"; do
-        # Parse config entry
-        IFS=':' read -r name source_subdir target_name <<< "$config_entry"
+    for config_name in "${configs[@]}"; do
+        local source="$jlessos_dir/$config_name"
+        local target="$CONFIG_DIR/$config_name"
 
-        # Use name as target if target_name not specified
-        target_name="${target_name:-$name}"
-
-        local source="$jlessos_dir/$source_subdir"
-        local target="$CONFIG_DIR/$target_name"
-
-        if copy_single_config "$source" "$target" "$name"; then
+        if copy_single_config "$source" "$target" "$config_name"; then
             ((copied++))
         else
             if [ -e "$target" ]; then
@@ -641,7 +650,7 @@ main() {
     clone_dotfiles "$HOME/.dotfiles"
     install_fonts
     setup_material_theme "$HOME/.dotfiles"
-    copy_configs "$HOME/.dotfiles"  # CHANGED: was symlink_configs
+    copy_configs "$HOME/.dotfiles"
     setup_fish
     setup_neovim
     setup_scripts
