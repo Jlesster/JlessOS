@@ -6,31 +6,31 @@
 }
 
 window {
-  background-color: rgba(52, 52, 52, 0.6);
-  border: 2px solid #B2C5FF;
+  background-color: rgba(53, 52, 52, 0.6);
+  border: 2px solid #D7BAFF;
   padding: 10px;
 }
 
 #input {
-  background-color: rgba(24, 27, 37, 0.46);
-  color: #E0E2EF;
-  border: 2px solid #C4C3EB;
+  background-color: rgba(30, 26, 36, 0.46);
+  color: #E9DFEE;
+  border: 2px solid #D9BDE3;
   padding: 6px 10px;
   margin-bottom: 10px;
 }
 
 #entry {
   padding: 6px 10px;
-  color: #C3C6D6;
+  color: #CDC3D4;
 }
 
 #entry:selected {
-  background-color: #B2C5FF;
-  color: #002B73;
+  background-color: #D7BAFF;
+  color: #440088;
   font-weight: bold;
 }
 
 #entry:hover {
-  background-color: #272A34;
+  background-color: #2D2833;
   color: #E8D3DE;
 }

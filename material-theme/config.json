@@ -18,6 +18,7 @@
     "fzf": true,
     "btop": true,
     "fish": true,
+    "glow": true,
     "wofi": {
       "enabled": true,
       "background_alpha_dark": 0.60,

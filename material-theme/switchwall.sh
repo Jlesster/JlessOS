@@ -42,7 +42,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
         "lazygit": true,
         "yazi": true,
         "fzf": true,
-	"wofi": true,
+	    "wofi": true,
         "btop": true,
         "fish": true,
         "hyprland": true
@@ -229,7 +229,8 @@ if command -v jq >/dev/null 2>&1; then
     ENABLE_NVIM=$(jq -r '.applications.nvim // true' "$CONFIG_FILE")
     ENABLE_LAZYGIT=$(jq -r '.applications.lazygit // true' "$CONFIG_FILE")
     ENABLE_STARSHIP=$(jq -r '.applications.starship // true' "$CONFIG_FILE")
-    ENABLE_WOFI=$(jq -r '.applications.wofi // true' "$CONFIG_FILE")
+    ENABLE_WOFI=$(jq -r '.applications.wofi | if type == "object" then .enabled else . end // false' "$CONFIG_FILE")
+    ENABLE_GLOW=$(jq -r '.applications.glow // true' "$CONFIG_FILE")
     ENABLE_YAZI=$(jq -r '.applications.yazi // true' "$CONFIG_FILE")
     ENABLE_FZF=$(jq -r '.applications.fzf // true' "$CONFIG_FILE")
     ENABLE_BTOP=$(jq -r '.applications.btop // true' "$CONFIG_FILE")
@@ -238,6 +239,7 @@ if command -v jq >/dev/null 2>&1; then
     [ "$ENABLE_KITTY" = "true" ] && GEN_CMD="$GEN_CMD --generate-kitty"
     [ "$ENABLE_NVIM" = "true" ] && GEN_CMD="$GEN_CMD --generate-nvim"
     [ "$ENABLE_LAZYGIT" = "true" ] && GEN_CMD="$GEN_CMD --generate-lazygit"
+    [ "$ENABLE_GLOW" = "true" ] && GEN_CMD="$GEN_CMD --generate-glow"
     [ "$ENABLE_STARSHIP" = "true" ] && GEN_CMD="$GEN_CMD --generate-starship --starship-output ~/.config/starship.toml"
     [ "$ENABLE_WOFI" = "true" ] && GEN_CMD="$GEN_CMD --generate-wofi"
     [ "$ENABLE_YAZI" = "true" ] && GEN_CMD="$GEN_CMD --generate-yazi"

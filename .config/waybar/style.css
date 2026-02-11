@@ -60,7 +60,7 @@ window#waybar {
 #window {
   padding: 0 10px;
   margin: 0;
-  color: rgba(205, 195, 212, 0.6);
+  color: rgba(205, 195, 212, 0.8);
   font-weight: 400;
   font-family: "Iosevka Nerd Font", monospace;
   font-size: 11px;
@@ -348,7 +348,7 @@ window#waybar {
 
 /* Custom modules */
 #custom-power {
-  padding: 1px 8px;
+  padding: 1px 10px;
   margin: 2px 2px 2px 1px;
   background: rgba(22, 18, 27, 0.6);
   color: #FFB4AB;
@@ -395,6 +395,10 @@ window#waybar {
   color: #f9e2af;
   border-color: rgba(249, 226, 175, 0.6);
   background: rgba(22, 18, 27, 0.65);
+}
+
+#custom-spacer {
+  padding: 0 100px;
 }
 
 /* Tooltips */
