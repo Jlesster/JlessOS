@@ -97,7 +97,7 @@ window#waybar {{
 #window {{
   padding: 0 10px;
   margin: 0;
-  color: {hex_to_rgba(on_surface_variant, 0.6)};
+  color: {hex_to_rgba(on_surface_variant, 0.8)};
   font-weight: 400;
   font-family: "Iosevka Nerd Font", monospace;
   font-size: 11px;
@@ -385,7 +385,7 @@ window#waybar {{
 
 /* Custom modules */
 #custom-power {{
-  padding: 1px 8px;
+  padding: 1px 10px;
   margin: 2px 2px 2px 1px;
   background: {hex_to_rgba(surface, 0.6)};
   color: {error};
@@ -432,6 +432,10 @@ window#waybar {{
   color: {warning};
   border-color: {hex_to_rgba(warning, 0.6)};
   background: {hex_to_rgba(surface, 0.65)};
+}}
+
+#custom-spacer {{
+  padding: 0 100px;
 }}
 
 /* Tooltips */

@@ -407,6 +407,21 @@ local function setup_highlights()
     hi("TabLineFill", {{ bg = "NONE" }})
     hi("TabLineSel", {{ fg = colors.mauve, bg = "NONE" }})
 
+    hi("SagaBorder", {{ fg = colors.lavender, bg = "NONE" }})
+    hi("SagaNormal", {{ fg = colors.text, bg = colors.mantle }})
+    hi("SagaTitle", {{ fg = colors.mauve, bg = "NONE", style = "bold" }})
+    hi("SagaFolder", {{ fg = colors.blue }})
+    hi("SagaCount", {{ fg = colors.peach, bg = colors.surface0 }})
+    hi("SagaBeacon", {{ bg = colors.red }})
+    hi("SagaCollapse", {{ fg = colors.overlay2 }})
+    hi("SagaExpand", {{ fg = colors.overlay2 }})
+    hi("SagaFinderFname", {{ fg = colors.text }})
+    hi("SagaDetail", {{ fg = colors.subtext0, style = "italic" }})
+    hi("SagaInCurrent", {{ fg = colors.yellow }})
+    hi("SagaOutCurrent", {{ fg = colors.blue }})
+    hi("SagaSelect", {{ fg = colors.mauve, style = "bold" }})
+    hi("SagaSep", {{ fg = colors.overlay0 }})
+
     -- ============================================================================
     -- TREESITTER BASE SYNTAX (Fallbacks when LSP not available)
     -- ============================================================================

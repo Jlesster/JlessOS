@@ -28,6 +28,7 @@ for dir_path in [THEME_CONFIG_DIR, THEME_STATE_DIR, THEME_CACHE_DIR]:
 try:
     from generate_nvim_theme import generate_neovim_theme, write_neovim_colorscheme
     from generate_kitty_theme import write_kitty_colors
+    from generate_glow_theme import generate_glow_colors, write_glow_config
     from generate_lazygit_theme import generate_lazygit_colors, write_lazygit_config, configure_git_diff_colors
     from generate_starship_theme import generate_starship_colors, write_starship_config
     from generate_yazi_theme import generate_yazi_colors, write_yazi_theme
@@ -51,6 +52,8 @@ parser = argparse.ArgumentParser(description='Standalone Material You color sche
 parser.add_argument('--path', type=str, default=None, help='Generate colorscheme from image')
 parser.add_argument('--generate-wofi', action='store_true', default=False, help='Generate Wofi theme')
 parser.add_argument('--generate-starship', action='store_true', default=False, help='Generate Starship prompt theme')
+parser.add_argument('--generate-glow', action='store_true', default=False, help='Generate Glow markdown theme')
+parser.add_argument('--glow-output', type=str, default=None, help='Custom Glow theme output path')
 parser.add_argument('--starship-output', type=str, default=None, help='Custom Starship theme output path')
 parser.add_argument('--size', type=int, default=128, help='Bitmap image size for processing')
 parser.add_argument('--color', type=str, default=None, help='Generate colorscheme from hex color')
@@ -328,22 +331,23 @@ if termscheme_path.exists():
         loaded_colors = json.load(f)
 
         wofi_enabled, wofi_cfg = get_app_cfg(loaded_colors, "wofi")
-        if (args.generate_all or args.generate_wofi) and wofi_enabled:
+        if args.generate_all or args.generate_wofi:
             if term_colors:
                 if args.debug:
                     print('\n=== Generating Wofi theme ===')
-                    print(f'Wofi config: {wofi_cfg}')
-
-                wofi_colors = generate_wofi_colors(
-                    material_colors,
-                    term_colors,
-                    darkmode,
-                    wofi_cfg
-                )
-                wofi_path = write_wofi_theme(wofi_colors, None, args.debug)
-
+                # Read wofi config from the main config.json, not termscheme
+                main_config_path = THEME_CONFIG_DIR / 'config.json'
+                wofi_cfg = {}
+                if main_config_path.exists():
+                    with open(main_config_path, 'r') as f:
+                        main_cfg = json.load(f)
+                    _, wofi_cfg = get_app_cfg(main_cfg, "wofi")
                 if args.debug:
-                    print(f'✓ Wofi theme written to: {wofi_path}')
+                    print(f'Wofi config: {wofi_cfg}')
+                wofi_colors = generate_wofi_colors(material_colors, term_colors, darkmode, wofi_cfg)
+                wofi_path = write_wofi_theme(wofi_colors, None, args.debug)
+                if args.debug:
+                    print(f'✔ Wofi theme written to: {wofi_path}')
 
 if args.generate_all or args.generate_kitty:
     if term_colors:
@@ -408,6 +412,18 @@ if args.generate_all or args.generate_fish:
         write_fish_prompt(material_colors, term_colors, None, args.debug)
         if args.debug:
             print(f'✓ Fish theme written to: {fish_path}')
+
+if args.generate_all or args.generate_glow:
+    if term_colors:
+        if args.debug:
+            print('\n=== Generating Glow theme ===')
+        glow_colors = generate_glow_colors(material_colors, term_colors, darkmode)
+        glow_path = write_glow_config(glow_colors, args.glow_output, args.debug)
+        if args.debug:
+            print(f'✓ Glow theme written to: {glow_path}')
+    else:
+        if args.debug:
+            print('Warning: No terminal colors generated. Use --termscheme to generate Glow theme.')
 
 # Output for scripts (SCSS format for compatibility)
 if not args.debug:
