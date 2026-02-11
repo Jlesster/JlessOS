@@ -1,6 +1,6 @@
 {
   "wallpaper": {
-    "current": "/home/jless/Pictures/Wallpapers/purple.png",
+    "current": "/home/jless/Downloads/10224645.jpg",
     "backend": "hyprpaper"
   },
   "theming": {
@@ -17,8 +17,8 @@
     "yazi": true,
     "fzf": true,
     "btop": true,
+    "starship": true,
     "fish": true,
-    "glow": true,
     "wofi": {
       "enabled": true,
       "background_alpha_dark": 0.60,

@@ -1,0 +1,62 @@
+return {
+{
+    "ahmedkhalf/project.nvim",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("project_nvim").setup({
+        detection_methods = { "lsp", "pattern" },
+        patterns = {
+          ".git",
+          "_darcs",
+          ".hg",
+          ".bzr",
+          ".svn",
+          "Makefile",
+          "package.json",
+          "pom.xml",
+          "build.gradle",
+          "build.gradle.kts",
+          "settings.gradle",
+          "settings.gradle.kts",
+          "mvnw",
+          "gradlew",
+          "cargo.toml",
+          "pyproject.toml",
+          "setup.py",
+          "requirements.txt",
+          "go.mod",
+          "composer.json",
+          "Gemfile",
+          ".project",
+          ".classpath",
+          "*.sln",
+          "*.csproj",
+          "CMakeLists.txt",
+          "tsconfig.json",
+          "jsconfig.json",
+          ".eslintrc",
+          ".prettierrc",
+          "webpack.config.js",
+          "vite.config.js",
+          "rollup.config.js",
+          "pubspec.yaml",
+          "mix.exs",
+          "rebar.config",
+          "Dockerfile",
+          "docker-compose.yml",
+        },
+        show_hidden = false,
+        silent_chdir = true,
+        scope_chdir = 'global',
+        manual_mode = false,
+        datapath = vim.fn.stdpath("data"),
+
+        -- This is the key setting to prevent finding parent project roots
+        exclude_dirs = {},
+        -- Don't search outside of home directory
+        respect_buf_cwd = false,
+      })
+    end,
+  }
+}

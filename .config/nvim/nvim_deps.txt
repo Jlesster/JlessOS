@@ -1,0 +1,67 @@
+# Neovim Configuration Dependencies
+# Use with: pacman -S --needed - < nvim-deps.txt
+# Or source in install script
+
+# === CORE ===
+neovim
+git
+
+# === SEARCH & NAVIGATION (CRITICAL) ===
+ripgrep
+fd
+fzf
+
+# === LSP DEPENDENCIES ===
+npm
+python-pip
+rustup
+cmake
+gcc
+unzip
+wget
+curl
+
+# === FILE MANAGERS ===
+yazi
+
+# === GIT INTEGRATION ===
+lazygit
+github-cli
+
+# === TERMINAL ===
+kitty
+
+# === DOCUMENTATION TOOLS ===
+glow
+tldr
+man-db
+
+# === CLIPBOARD ===
+wl-clipboard
+xclip
+
+# === IMAGE SUPPORT ===
+imagemagick
+chafa
+
+# === JAVA DEVELOPMENT ===
+jdk-openjdk
+maven
+
+# === OPTIONAL BUT RECOMMENDED ===
+bat
+eza
+git-delta
+shellcheck
+shfmt
+lua-language-server
+bash-language-server
+
+# === FONTS ===
+ttf-jetbrains-mono-nerd
+ttf-nerd-fonts-symbols-mono
+
+# === NOTE ===
+# tree-sitter-cli: Install via cargo or npm after rustup/npm setup
+# cargo install tree-sitter-cli
+# OR: npm install -g tree-sitter-cli

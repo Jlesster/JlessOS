@@ -42,7 +42,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
         "lazygit": true,
         "yazi": true,
         "fzf": true,
-	    "wofi": true,
+	"wofi": true,
         "btop": true,
         "fish": true,
         "hyprland": true
@@ -159,45 +159,56 @@ if [ -n "$IMAGE_PATH" ]; then
             if command -v hyprctl >/dev/null 2>&1; then
                 # Update hyprpaper config
                 HYPRPAPER_CONF="$XDG_CONFIG_HOME/hypr/hyprpaper.conf"
-                if [ -f "$HYPRPAPER_CONF" ]; then
-                    # Get current monitor
-                    MONITOR=$(hyprctl monitors -j | jq -r '.[0].name')
 
-                    # Kill existing hyprpaper
-                    killall hyprpaper 2>/dev/null || true
+                # Kill existing hyprpaper first
+                killall hyprpaper 2>/dev/null || true
 
-                    # Update config with new hyprpaper syntax
-                    cat > "$HYPRPAPER_CONF" << EOF
+                # Get all monitors as array
+                mapfile -t MONITORS < <(hyprctl monitors -j | jq -r '.[].name')
+
+                # Start building config
+                cat > "$HYPRPAPER_CONF" << 'EOFCONFIG'
+# Auto-generated hyprpaper config
+splash = false
+
+EOFCONFIG
+
+                # Add wallpaper block for each monitor
+                for MONITOR in "${MONITORS[@]}"; do
+                    cat >> "$HYPRPAPER_CONF" << EOFCONFIG
 wallpaper {
     monitor = $MONITOR
     path = $IMAGE_PATH
     fit_mode = cover
 }
 
-splash = false
-EOF
-                    # Start hyprpaper
-                    hyprpaper &
-                fi
+EOFCONFIG
+                done
+
+                # Start hyprpaper
+                hyprpaper &
+
+                echo "Wallpaper set to: $IMAGE_PATH"
+                echo "  ✓ Configured for ${#MONITORS[@]} monitor(s): ${MONITORS[*]}"
             fi
             ;;
         swww)
             if command -v swww >/dev/null 2>&1; then
                 swww img "$IMAGE_PATH" --transition-type fade --transition-duration 2
+                echo "Wallpaper set to: $IMAGE_PATH"
             fi
             ;;
         swaybg)
             if command -v swaybg >/dev/null 2>&1; then
                 killall swaybg 2>/dev/null || true
                 swaybg -i "$IMAGE_PATH" -m fill &
+                echo "Wallpaper set to: $IMAGE_PATH"
             fi
             ;;
         *)
             echo "Unknown wallpaper backend: $WALLPAPER_BACKEND"
             ;;
     esac
-
-    echo "Wallpaper set to: $IMAGE_PATH"
 fi
 
 # Generate color scheme
@@ -229,8 +240,7 @@ if command -v jq >/dev/null 2>&1; then
     ENABLE_NVIM=$(jq -r '.applications.nvim // true' "$CONFIG_FILE")
     ENABLE_LAZYGIT=$(jq -r '.applications.lazygit // true' "$CONFIG_FILE")
     ENABLE_STARSHIP=$(jq -r '.applications.starship // true' "$CONFIG_FILE")
-    ENABLE_WOFI=$(jq -r '.applications.wofi | if type == "object" then .enabled else . end // false' "$CONFIG_FILE")
-    ENABLE_GLOW=$(jq -r '.applications.glow // true' "$CONFIG_FILE")
+    ENABLE_WOFI=$(jq -r '.applications.wofi // true' "$CONFIG_FILE")
     ENABLE_YAZI=$(jq -r '.applications.yazi // true' "$CONFIG_FILE")
     ENABLE_FZF=$(jq -r '.applications.fzf // true' "$CONFIG_FILE")
     ENABLE_BTOP=$(jq -r '.applications.btop // true' "$CONFIG_FILE")
@@ -239,7 +249,6 @@ if command -v jq >/dev/null 2>&1; then
     [ "$ENABLE_KITTY" = "true" ] && GEN_CMD="$GEN_CMD --generate-kitty"
     [ "$ENABLE_NVIM" = "true" ] && GEN_CMD="$GEN_CMD --generate-nvim"
     [ "$ENABLE_LAZYGIT" = "true" ] && GEN_CMD="$GEN_CMD --generate-lazygit"
-    [ "$ENABLE_GLOW" = "true" ] && GEN_CMD="$GEN_CMD --generate-glow"
     [ "$ENABLE_STARSHIP" = "true" ] && GEN_CMD="$GEN_CMD --generate-starship --starship-output ~/.config/starship.toml"
     [ "$ENABLE_WOFI" = "true" ] && GEN_CMD="$GEN_CMD --generate-wofi"
     [ "$ENABLE_YAZI" = "true" ] && GEN_CMD="$GEN_CMD --generate-yazi"

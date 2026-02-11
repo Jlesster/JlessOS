@@ -45,6 +45,7 @@ end
 
 #SET PATH VARS
 set -gx PATH $HOME/.local/bin $PATH
+set -gx EDITOR "nvim"
 set -gx PATH $PATH $HOME/go/bin
 
 alias ls="eza --icons"
@@ -61,3 +62,4 @@ alias glow="glow ~/Documents/Docs"
 starship init fish | source
 
 ff
+export JAVA_HOME="/usr/lib/jvm/java-21-openjdk"
