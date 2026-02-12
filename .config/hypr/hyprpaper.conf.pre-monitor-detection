@@ -1,0 +1,7 @@
+wallpaper {
+    monitor = eDP-1
+    path = /home/jless/Pictures/Wallpapers/purple.png
+    fit_mode = cover
+}
+
+splash = false

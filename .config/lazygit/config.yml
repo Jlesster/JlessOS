@@ -2,35 +2,33 @@
 gui:
   theme:
     activeBorderColor:
-      - "#B39DFF"
+      - "#C297FF"
       - bold
     inactiveBorderColor:
-      - "#644EAE"
+      - "#7249AB"
     optionsTextColor:
-      - "#C6ABFF"
+      - "#D4A5FF"
     selectedLineBgColor:
-      - "#2B007A"
+      - "#36006E"
     selectedRangeBgColor:
-      - "#3A1592"
+      - "#480E8A"
     cherryPickedCommitBgColor:
-      - "#3E3AAE"
+      - "#5034AA"
     cherryPickedCommitFgColor:
-      - "#E4E0F2"
+      - "#E6DFF2"
     unstagedChangesColor:
-      - "#8284D4"
+      - "#8E81D2"
     defaultFgColor:
-      - "#E1D9F5"
+      - "#E6D7F4"
     searchingActiveBorderColor:
-      - "#C49FFF"
-
+      - "#D498FF"
   nerdFontsVersion: "3"
   showFileTree: true
   showRandomTip: false
-
 # Git diff settings with custom colors
 git:
-  paging:
-    colorArg: always
-    useConfig: false
-    # Using delta for better diff rendering
-    pager: delta --dark --paging=never --line-numbers --minus-style='syntax "#8284D4"' --minus-emph-style='syntax "#8284D4"' --plus-style='syntax "#BC7FCF"' --plus-emph-style='syntax "#BC7FCF"' --hunk-header-style='file line-number syntax'
+  pagers:
+    - colorArg: always
+      useConfig: false
+      # Using delta for better diff rendering
+      pager: delta --dark --paging=never --line-numbers --minus-style='syntax "#8E81D2"' --minus-emph-style='syntax "#8E81D2"' --plus-style='syntax "#C67CC5"' --plus-emph-style='syntax "#C67CC5"' --hunk-header-style='file line-number syntax'

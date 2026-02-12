@@ -1,0 +1,13 @@
+source = ~/.config/hypr/workspaces.conf
+source = ~/.config/hypr/keybinds.conf
+source = ~/.config/hypr/rules.conf
+source = ~/.config/hypr/execs.conf
+source = ~/.config/hypr/envs.conf
+source = ~/.config/hypr/general.conf
+
+# ------- basics -------
+exec-once = waybar
+exec-once = mako
+exec-once = hyprpaper
+
+monitor = eDP-1, 1920x1080@144, auto, 1

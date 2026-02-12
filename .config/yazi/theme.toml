@@ -4,85 +4,85 @@
 
 rules = [
     # Images
-    { mime = "image/*", fg = "#A5C1FF" },
+    { mime = "image/*", fg = "#B0BEFF" },
 
     # Videos
-    { mime = "video/*", fg = "#FFC160" },
+    { mime = "video/*", fg = "#FFC323" },
 
     # Audio
-    { mime = "audio/*", fg = "#FFC2F0" },
+    { mime = "audio/*", fg = "#FFC3E4" },
 
     # Archives
-    { mime = "application/*zip", fg = "#FFBBE0" },
-    { mime = "application/*tar", fg = "#FFBBE0" },
-    { mime = "application/*rar", fg = "#FFBBE0" },
-    { mime = "application/x-7z-compressed", fg = "#FFBBE0" },
-    { mime = "application/gzip", fg = "#FFBBE0" },
+    { mime = "application/*zip", fg = "#FFBCD4" },
+    { mime = "application/*tar", fg = "#FFBCD4" },
+    { mime = "application/*rar", fg = "#FFBCD4" },
+    { mime = "application/x-7z-compressed", fg = "#FFBCD4" },
+    { mime = "application/gzip", fg = "#FFBCD4" },
 
     # Documents
-    { mime = "application/pdf", fg = "#D2D8FF" },
-    { mime = "text/*", fg = "#D2D8FF" },
+    { mime = "application/pdf", fg = "#D8D6FF" },
+    { mime = "text/*", fg = "#D8D6FF" },
 
     # Code files - explicit rules for common extensions
-    { name = "*.py", fg = "#DABDFF" },
-    { name = "*.js", fg = "#DABDFF" },
-    { name = "*.ts", fg = "#DABDFF" },
-    { name = "*.jsx", fg = "#DABDFF" },
-    { name = "*.tsx", fg = "#DABDFF" },
-    { name = "*.rs", fg = "#DABDFF" },
-    { name = "*.go", fg = "#DABDFF" },
-    { name = "*.c", fg = "#DABDFF" },
-    { name = "*.cpp", fg = "#DABDFF" },
-    { name = "*.h", fg = "#DABDFF" },
-    { name = "*.hpp", fg = "#DABDFF" },
-    { name = "*.java", fg = "#DABDFF" },
-    { name = "*.rb", fg = "#DABDFF" },
-    { name = "*.sh", fg = "#DABDFF" },
-    { name = "*.bash", fg = "#DABDFF" },
-    { name = "*.zsh", fg = "#DABDFF" },
-    { name = "*.vim", fg = "#DABDFF" },
-    { name = "*.lua", fg = "#DABDFF" },
+    { name = "*.py", fg = "#E6B8FF" },
+    { name = "*.js", fg = "#E6B8FF" },
+    { name = "*.ts", fg = "#E6B8FF" },
+    { name = "*.jsx", fg = "#E6B8FF" },
+    { name = "*.tsx", fg = "#E6B8FF" },
+    { name = "*.rs", fg = "#E6B8FF" },
+    { name = "*.go", fg = "#E6B8FF" },
+    { name = "*.c", fg = "#E6B8FF" },
+    { name = "*.cpp", fg = "#E6B8FF" },
+    { name = "*.h", fg = "#E6B8FF" },
+    { name = "*.hpp", fg = "#E6B8FF" },
+    { name = "*.java", fg = "#E6B8FF" },
+    { name = "*.rb", fg = "#E6B8FF" },
+    { name = "*.sh", fg = "#E6B8FF" },
+    { name = "*.bash", fg = "#E6B8FF" },
+    { name = "*.zsh", fg = "#E6B8FF" },
+    { name = "*.vim", fg = "#E6B8FF" },
+    { name = "*.lua", fg = "#E6B8FF" },
 
     # Markup/Config files
-    { name = "*.html", fg = "#D2D8FF" },
-    { name = "*.css", fg = "#DABDFF" },
-    { name = "*.scss", fg = "#DABDFF" },
-    { name = "*.json", fg = "#FFBBE0" },
-    { name = "*.yaml", fg = "#FFBBE0" },
-    { name = "*.yml", fg = "#FFBBE0" },
-    { name = "*.toml", fg = "#FFBBE0" },
-    { name = "*.xml", fg = "#D2D8FF" },
-    { name = "*.md", fg = "#D2D8FF" },
+    { name = "*.html", fg = "#D8D6FF" },
+    { name = "*.css", fg = "#E6B8FF" },
+    { name = "*.scss", fg = "#E6B8FF" },
+    { name = "*.json", fg = "#FFBCD4" },
+    { name = "*.yaml", fg = "#FFBCD4" },
+    { name = "*.yml", fg = "#FFBCD4" },
+    { name = "*.toml", fg = "#FFBCD4" },
+    { name = "*.xml", fg = "#D8D6FF" },
+    { name = "*.md", fg = "#D8D6FF" },
 
     # Fallback
-    { name = "*", fg = "#A19BAC" },
-    { name = "*/", fg = "#CDBDFF" },
+    { name = "*", fg = "#A49AAC" },
+    { name = "*/", fg = "#D7BAFF" },
 ]
 
 [manager]
-cwd = { fg = "#CDBDFF" }
+cwd = { fg = "#D7BAFF" }
 
 # Hovered
-hovered = { fg = "black", bg = "#CDBDFF" }
+hovered = { fg = "black", bg = "#D7BAFF" }
 preview_hovered = { underline = true }
 
 # Find
-find_keyword  = { fg = "#FFBBE0", bold = true }
-find_position = { fg = "#A5C1FF", bg = "reset", bold = true }
+find_keyword  = { fg = "#FFBCD4", bold = true }
+find_position = { fg = "#B0BEFF", bg = "reset", bold = true }
 
 # Marker
-marker_selected = { fg = "#CDBDFF", bg = "#CDBDFF" }
-marker_copied   = { fg = "#DABDFF", bg = "#DABDFF" }
-marker_cut      = { fg = "#6CC630", bg = "#6CC630" }
+marker_selected = { fg = "#D7BAFF", bg = "#D7BAFF" }
+marker_copied   = { fg = "#E6B8FF", bg = "#E6B8FF" }
+marker_cut      = { fg = "#3FCA4E", bg = "#3FCA4E" }
 
 # Tab
-tab_active   = { fg = "black", bg = "#CDBDFF" }
-tab_inactive = { fg = "#A19BAC", bg = "reset" }
+tab_active   = { fg = "black", bg = "#D7BAFF" }
+tab_inactive = { fg = "#A49AAC", bg = "reset" }
 tab_width    = 1
 
 # Border
 border_symbol = "│"
-border_style  = { fg = "#A19BAC" }
+border_style  = { fg = "#A49AAC" }
 
 # Highlighting
 syntect_theme = ""
@@ -90,57 +90,57 @@ syntect_theme = ""
 [status]
 separator_open  = ""
 separator_close = ""
-separator_style = { fg = "#A19BAC", bg = "#A19BAC" }
+separator_style = { fg = "#A49AAC", bg = "#A49AAC" }
 
 # Mode
-mode_normal = { fg = "black", bg = "#CDBDFF", bold = true }
-mode_select = { fg = "black", bg = "#DABDFF", bold = true }
-mode_unset  = { fg = "black", bg = "#FFBBE0", bold = true }
+mode_normal = { fg = "black", bg = "#D7BAFF", bold = true }
+mode_select = { fg = "black", bg = "#E6B8FF", bold = true }
+mode_unset  = { fg = "black", bg = "#FFBCD4", bold = true }
 
 # Progress
-progress_label  = { fg = "#A19BAC", bold = true }
-progress_normal = { fg = "#CDBDFF", bg = "reset" }
-progress_error  = { fg = "#6CC630", bg = "reset" }
+progress_label  = { fg = "#A49AAC", bold = true }
+progress_normal = { fg = "#D7BAFF", bg = "reset" }
+progress_error  = { fg = "#3FCA4E", bg = "reset" }
 
 # Permissions
-permissions_t = { fg = "#FBC1FF" }
-permissions_r = { fg = "#D2D8FF" }
-permissions_w = { fg = "#FFBBE0" }
-permissions_x = { fg = "#FBC1FF" }
-permissions_s = { fg = "#A19BAC" }
+permissions_t = { fg = "#FFC2F2" }
+permissions_r = { fg = "#D8D6FF" }
+permissions_w = { fg = "#FFBCD4" }
+permissions_x = { fg = "#FFC2F2" }
+permissions_s = { fg = "#A49AAC" }
 
 [input]
-border   = { fg = "#CDBDFF" }
+border   = { fg = "#D7BAFF" }
 title    = {}
 value    = {}
 selected = { reversed = true }
 
 [select]
-border   = { fg = "#CDBDFF" }
-active   = { fg = "#CDBDFF" }
+border   = { fg = "#D7BAFF" }
+active   = { fg = "#D7BAFF" }
 inactive = {}
 
 [tasks]
-border  = { fg = "#CDBDFF" }
+border  = { fg = "#D7BAFF" }
 title   = {}
 hovered = { underline = true }
 
 [which]
 mask            = { bg = "black" }
-cand            = { fg = "#DABDFF" }
-rest            = { fg = "#A19BAC" }
-desc            = { fg = "#D2D8FF" }
+cand            = { fg = "#E6B8FF" }
+rest            = { fg = "#A49AAC" }
+desc            = { fg = "#D8D6FF" }
 separator       = "  "
-separator_style = { fg = "#A19BAC" }
+separator_style = { fg = "#A49AAC" }
 
 [help]
-on      = { fg = "#CDBDFF" }
-exec    = { fg = "#FBC1FF" }
-desc    = { fg = "#A19BAC" }
-hovered = { bg = "#360096", bold = true }
-footer  = { fg = "black", bg = "#A19BAC" }
+on      = { fg = "#D7BAFF" }
+exec    = { fg = "#FFC2F2" }
+desc    = { fg = "#A49AAC" }
+hovered = { bg = "#440088", bold = true }
+footer  = { fg = "black", bg = "#A49AAC" }
 
 [completion]
-border   = { fg = "#CDBDFF" }
-active   = { bg = "#360096" }
+border   = { fg = "#D7BAFF" }
+active   = { bg = "#440088" }
 inactive = {}
