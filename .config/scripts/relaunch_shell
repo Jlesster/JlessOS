@@ -2,7 +2,8 @@
 
 hyprctl reload
 
-pkill waybar
-waybar &
+pkill jlessbar
+sleep 0.5
+kitty --class jlessbar -e jlessbar &
 
 hyprshade on vibrance

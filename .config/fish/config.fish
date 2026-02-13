@@ -1,6 +1,10 @@
 if status is-interactive
-# Commands to run in interactive sessions can go here
+    # Only run fastfetch in interactive sessions, but not in nested environments
+    if not set -q NVIM; and not set -q INSIDE_EMACS; and not set -q CARGO_MANIFEST_DIR
+        fastfetch
+    end
 end
+
 
 function fish_greeting
 
@@ -61,5 +65,4 @@ alias glow="glow ~/Documents/Docs"
 
 starship init fish | source
 
-ff
 export JAVA_HOME="/usr/lib/jvm/java-21-openjdk"
