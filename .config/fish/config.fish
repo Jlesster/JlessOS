@@ -61,7 +61,10 @@ alias nv="nvim"
 alias fm="yazi"
 alias top="btop"
 alias hs="hyprshade on vibrance"
-alias glow="glow ~/Documents/Docs"
+
+function glowdocs
+    glow ~/Documents/Docs/$argv
+end
 
 starship init fish | source
 

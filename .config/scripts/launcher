@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if command -v foot &>/dev/null; then
+  TERM="foot"
+elif command -v alacritty &>/dev/null; then
+  TERM="alacritty"
+else
+  TERM="kitty"
+fi
+
+$TERM \
+  --title=puffy \
+  -e ~/.local/bin/puffy "$@"

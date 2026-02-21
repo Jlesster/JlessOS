@@ -4,12 +4,12 @@ Neovim Theme Generator - Refactored Version
 All background transparency handled through transparent_groups at the end
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from materialyoucolor.hct import Hct
-from materialyoucolor.utils.color_utils import rgba_from_argb, argb_from_rgb
 
+from materialyoucolor.hct import Hct
+from materialyoucolor.utils.color_utils import argb_from_rgb, rgba_from_argb
 
 # Embedded Catppuccin Mocha palette as fallback
 CATPPUCCIN_MOCHA = {
@@ -38,7 +38,7 @@ CATPPUCCIN_MOCHA = {
     "surface0": "#313244",
     "base": "#1e1e2e",
     "mantle": "#181825",
-    "crust": "#11111b"
+    "crust": "#11111b",
 }
 
 
@@ -66,9 +66,7 @@ def load_catppuccin_palette(path: str = None) -> dict:
 
 def hex_to_argb(hex_code: str) -> int:
     """Convert hex color to ARGB integer"""
-    return argb_from_rgb(
-        int(hex_code[1:3], 16), int(hex_code[3:5], 16), int(hex_code[5:], 16)
-    )
+    return argb_from_rgb(int(hex_code[1:3], 16), int(hex_code[3:5], 16), int(hex_code[5:], 16))
 
 
 def argb_to_hex(argb: int) -> str:
@@ -77,18 +75,14 @@ def argb_to_hex(argb: int) -> str:
     return "#{:02X}{:02X}{:02X}".format(*map(round, rgba))
 
 
-def harmonize_hex(
-    hex_color: str, accent_argb: int, harmony_amt: float, threshold: float
-) -> str:
+def harmonize_hex(hex_color: str, accent_argb: int, harmony_amt: float, threshold: float) -> str:
     """
     Harmonize a hex color toward accent color
     Preserves Catppuccin tone & chroma, only nudges hue toward accent
     """
-    from materialyoucolor.utils.math_utils import (
-        sanitize_degrees_double,
-        difference_degrees,
-        rotation_direction,
-    )
+    from materialyoucolor.utils.math_utils import (difference_degrees,
+                                                   rotation_direction,
+                                                   sanitize_degrees_double)
 
     base_argb = hex_to_argb(hex_color)
     from_hct = Hct.from_int(base_argb)
@@ -164,9 +158,7 @@ def generate_neovim_theme(
 
     # Background / surfaces (keep Mocha depth)
     neovim_colors["base"] = (
-        "NONE"
-        if transparent
-        else harmonize_hex(cat["base"], accent_argb, BG_HARMONY, BG_THRESH)
+        "NONE" if transparent else harmonize_hex(cat["base"], accent_argb, BG_HARMONY, BG_THRESH)
     )
 
     for k in [
@@ -230,9 +222,7 @@ def generate_neovim_theme(
     return neovim_colors
 
 
-def write_neovim_colorscheme(
-    neovim_colors: dict, output_path: str = None, debug: bool = False
-):
+def write_neovim_colorscheme(neovim_colors: dict, output_path: str = None, debug: bool = False):
     """
     Write Neovim colorscheme Lua file
 
@@ -267,7 +257,7 @@ def write_neovim_colorscheme(
         "pink": boost_for_rainbow(hex_to_argb(neovim_colors["pink"]), 1.3, 70),
     }
 
-    nvim_theme_content = f'''
+    nvim_theme_content = f"""
 -- Auto-generated Neovim colorscheme
 -- Vibrant LSP-semantic based theme with Material You + Catppuccin Mocha
 
@@ -332,7 +322,7 @@ end
 -- BASE UI ELEMENTS
 -- ============================================================================
 local function setup_highlights()
-    hi("Normal", {{ fg = colors.text, bg = "NONE" }})
+    hi("Normal", {{ fg = colors.text, bg = colors.mantle }})
     hi("NormalFloat", {{ fg = colors.text, bg = colors.mantle }})
     hi("FloatBorder", {{ fg = colors.lavender, bg = "NONE"}})
     hi("FloatTitle", {{ fg = colors.mauve, bg = "NONE", style = "bold,italic" }})
@@ -341,7 +331,9 @@ local function setup_highlights()
     hi("UfoFoldedBg", {{ fg = colors.lavender }})
     hi("UfoFoldedFg", {{ fg = colors.lavender }})
 
-    hi("Cursor", {{ fg = "NONE", bg = colors.text }})
+    hi("Cursor", {{ style = "reverse" }})
+    hi("iCursor", {{ style = "reverse" }})
+    hi("vCursor", {{ style = "reverse" }})
     hi("CursorLine", {{ bg = "NONE" }})
     hi("CursorColumn", {{ bg = "NONE" }})
     hi("ColorColumn", {{ bg = "NONE" }})
@@ -402,6 +394,8 @@ local function setup_highlights()
     hi("CmpItemAbbrMatch", {{ fg = colors.blue, bg = "NONE", style = "bold" }})
     hi("CmpItemAbbrMatchFuzzy", {{ fg = colors.blue, bg = "NONE" }})
     hi("CmpItemMenu", {{ fg = colors.subtext0, bg = "NONE", style = "italic" }})
+    hi("CmpGhostText", {{ fg = colors.overlay2, style = "italic" }})
+
 
     hi("TabLine", {{ fg = colors.subtext0, bg = colors.mantle }})
     hi("TabLineFill", {{ bg = "NONE" }})
@@ -421,6 +415,14 @@ local function setup_highlights()
     hi("SagaOutCurrent", {{ fg = colors.blue }})
     hi("SagaSelect", {{ fg = colors.mauve, style = "bold" }})
     hi("SagaSep", {{ fg = colors.overlay0 }})
+
+    -- ============================================================================
+    -- MARVIN DASHBOARD
+    -- ============================================================================
+    hi("Special", {{ fg = colors.mauve, style = "bold" }})
+    hi("Function", {{ fg = colors.sapphire, style = "bold" }})
+    hi("String", {{ fg = colors.green }})
+    hi("Comment", {{ fg = colors.pink, style = "italic" }})
 
     -- ============================================================================
     -- TREESITTER BASE SYNTAX (Fallbacks when LSP not available)
@@ -473,6 +475,7 @@ local function setup_highlights()
     hi("@namespace", {{ fg = colors.sapphire, style = "italic" }})
 
     hi("@punctuation.delimiter", {{ fg = colors.overlay2 }})
+    hi("@punctuation.delimiter.rust", {{ fg = colors.flamingo }})
     hi("@punctuation.bracket", {{ fg = colors.overlay2 }})
     hi("@punctuation.special", {{ fg = colors.sky }})
 
@@ -1008,7 +1011,47 @@ local function setup_highlights()
 end
 
 setup_highlights()
-'''
+
+local state_file = vim.fn.stdpath("state") .. "/transparency.txt"
+
+local function read_state()
+    local f = io.open(state_file, "r")
+    if not f then return false end
+    local val = f:read("*l")
+    f:close()
+    return val == "true"
+end
+
+local function write_state(val)
+    local f = io.open(state_file, "w")
+    if f then
+        f:write(tostring(val))
+        f:close()
+    end
+end
+
+local function apply_transparency(transparent)
+    if transparent then
+        vim.api.nvim_set_hl(0, "Normal", {{ fg = colors.text }})
+        vim.api.nvim_set_hl(0, "NormalFloat", {{ fg = colors.text, bg = colors.mantle }})
+    else
+        vim.api.nvim_set_hl(0, "Normal", {{ fg = colors.text, bg = colors.mantle }})
+        vim.api.nvim_set_hl(0, "NormalFloat", {{ fg = colors.text, bg = colors.mantle }})
+    end
+end
+
+local _transparent = read_state()
+apply_transparency(_transparent)
+
+function ToggleTransparency()
+    _transparent = not _transparent
+    apply_transparency(_transparent)
+    write_state(_transparent)
+end
+
+vim.keymap.set("n", "<leader>tm", ToggleTransparency, { desc = "Toggle Transparency", noremap = true, silent = true })
+
+"""
 
     with open(output_path, "w") as f:
         f.write(nvim_theme_content)
@@ -1021,6 +1064,4 @@ setup_highlights()
 
 if __name__ == "__main__":
     print("This module should be imported, not run directly.")
-    print(
-        "Use: from generate_nvim_theme import generate_neovim_theme, write_neovim_colorscheme"
-    )
+    print("Use: from generate_nvim_theme import generate_neovim_theme, write_neovim_colorscheme")
