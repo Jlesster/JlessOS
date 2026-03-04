@@ -61,6 +61,7 @@ alias nv="nvim"
 alias fm="yazi"
 alias top="btop"
 alias hs="hyprshade on vibrance"
+alias newtab='kitty @ launch --type=tab --title shell --keep-focus && kitty @ launch --location=first --bias=3 --keep-focus --title JlessBar jlessbar'
 
 function glowdocs
     glow ~/Documents/Docs/$argv
